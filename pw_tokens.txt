@@ -1,0 +1,6 @@
+[2026-05-18 22:36:59]
+Code       : 2cd6f33d56ac91007d42af1667d1de32bf29cae21fc1864567abe4f03a11629c
+Link       : https://account.pixelworlds.pw/registration?code=2cd6f33d56ac91007d42af1667d1de32bf29cae21fc1864567abe4f03a11629c
+Device ID  : android_32ad7567a73a776e26c99991
+PlayFab ID : 9BB76961ADB12DDC
+------------------------------------------------------------
