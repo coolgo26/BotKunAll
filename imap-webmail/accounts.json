@@ -1,0 +1,22 @@
+[
+  {
+    "id": "emelku",
+    "name": "emelku.biz.id",
+    "host": "mail.privateemail.com",
+    "port": 993,
+    "tls": true,
+    "username": "admin@emelku.biz.id",
+    "password": "Admin606@",
+    "domain": "emelku.biz.id"
+  },
+  {
+    "id": "2",
+    "name": "sweetescape.biz.id",
+    "host": "mail.privateemail.com",
+    "port": 993,
+    "tls": true,
+    "username": "pwkun@sweetescape.biz.id",
+    "password": "Ganjar606@",
+    "domain": "sweetescape.biz.id"
+  }
+]

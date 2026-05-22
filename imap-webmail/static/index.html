@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📧 Multi IMAP</title>
+    <style>
+        :root { --bg:#0f0f1a; --card:#1a1a2e; --hover:#222240; --active:#2a2a4a; --border:#2d2d50; --accent:#6c63ff; --accent2:#8b83ff; --green:#4caf50; --green-bg:#1b3d1b; --red:#ef5350; --red-bg:#3d1b1b; --yellow:#ffc107; --text:#e8e8f0; --dim:#8888aa; --muted:#555577; --r:8px; }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',-apple-system,sans-serif; background:var(--bg); color:var(--text); }
+        .header { background:var(--card); padding:12px 20px; display:flex; align-items:center; gap:12px; border-bottom:1px solid var(--border); }
+        .header .logo { font-size:1.1rem; font-weight:700; color:var(--accent2); }
+        .tabs { display:flex; gap:4px; margin-left:16px; }
+        .tab { background:transparent; border:1px solid var(--border); color:var(--dim); padding:6px 14px; border-radius:var(--r); cursor:pointer; font-size:0.8rem; }
+        .tab:hover { background:var(--hover); color:var(--text); }
+        .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+        .toolbar { background:var(--card); padding:10px 20px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; border-bottom:1px solid var(--border); }
+        input,select,button,textarea { padding:7px 10px; border:1px solid var(--border); border-radius:var(--r); background:var(--bg); color:var(--text); font-size:0.8rem; }
+        input:focus,textarea:focus { border-color:var(--accent); outline:none; }
+        button { background:var(--hover); cursor:pointer; }
+        button:hover { background:var(--accent); border-color:var(--accent); }
+        .btn-p { background:var(--accent); color:#fff; border-color:var(--accent); }
+        .btn-g { background:var(--green); color:#fff; border-color:var(--green); }
+        .btn-r { background:var(--red); color:#fff; border-color:var(--red); }
+        .layout { display:flex; height:calc(100vh - 95px); }
+        .sidebar { width:200px; min-width:200px; background:var(--card); border-right:1px solid var(--border); overflow-y:auto; }
+        .sidebar-t { padding:12px 14px 6px; font-size:0.6rem; text-transform:uppercase; letter-spacing:1px; color:var(--muted); }
+        .acc-i { padding:9px 14px; cursor:pointer; border-left:3px solid transparent; font-size:0.8rem; }
+        .acc-i:hover { background:var(--hover); }
+        .acc-i.active { background:var(--active); border-left-color:var(--accent); }
+        .acc-i .n { font-weight:500; }
+        .acc-i .d { font-size:0.68rem; color:var(--dim); }
+        .email-row { padding:10px 14px; border-bottom:1px solid var(--border); cursor:pointer; }
+        .email-row:hover { background:var(--hover); }
+        .email-row.active { background:var(--active); border-left:3px solid var(--accent); }
+        .email-row .subj { font-size:0.83rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .email-row .meta { font-size:0.68rem; color:var(--dim); display:flex; justify-content:space-between; margin-top:2px; }
+        .email-row .from { color:var(--accent2); }
+        .detail-head { margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+        .detail-head h2 { font-size:1rem; color:var(--accent2); margin-bottom:6px; }
+        .detail-head .row { font-size:0.75rem; color:var(--dim); line-height:1.6; }
+        .detail-body iframe { width:100%; min-height:450px; border:none; border-radius:var(--r); background:#fff; }
+        .link-section { margin-top:12px; }
+        .link-section h4 { font-size:0.8rem; color:var(--green); margin-bottom:5px; }
+        .link-section a { display:block; font-size:0.7rem; color:var(--accent2); word-break:break-all; margin-bottom:3px; text-decoration:none; }
+        .link-section a:hover { text-decoration:underline; }
+        .vlink { display:inline-block; background:var(--green-bg); color:var(--green); padding:5px 10px; border-radius:4px; margin:2px 0; font-size:0.72rem; word-break:break-all; border:1px solid #2e7d32; }
+        .placeholder { text-align:center; padding-top:80px; color:var(--muted); }
+        .loading { text-align:center; padding:30px; color:var(--dim); }
+        .error-box { background:var(--red-bg); border:1px solid var(--red); border-radius:var(--r); padding:14px; margin:16px; color:var(--red); font-size:0.82rem; }
+        .error-box .hint { font-size:0.72rem; color:var(--dim); margin-top:6px; }
+        .tag { font-size:0.6rem; background:var(--accent); color:#fff; padding:1px 5px; border-radius:3px; margin-left:4px; }
+        /* Login */
+        .login-box { max-width:340px; margin:80px auto; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:32px; text-align:center; }
+        .login-box h2 { color:var(--accent2); margin-bottom:20px; }
+        .login-box input { width:100%; margin-bottom:12px; padding:10px; }
+        .login-box button { width:100%; padding:11px; }
+        .login-box .err { color:var(--red); font-size:0.78rem; margin-top:8px; }
+        /* Admin */
+        .admin-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r); padding:16px; margin-bottom:12px; display:flex; align-items:center; gap:14px; }
+        .admin-card .info { flex:1; }
+        .admin-card .info .name { font-weight:500; font-size:0.88rem; }
+        .admin-card .info .detail { font-size:0.72rem; color:var(--dim); margin-top:2px; }
+        .admin-card .actions { display:flex; gap:6px; }
+        .admin-card .actions button { font-size:0.72rem; padding:5px 10px; }
+        .fg { margin-bottom:10px; }
+        .fg label { display:block; font-size:0.7rem; color:var(--dim); margin-bottom:3px; }
+        .fg input { width:100%; }
+        .fg-row { display:flex; gap:8px; }
+        .fg-row .fg { flex:1; }
+    </style>
+</head>
+<body>
+<div class="header">
+    <span class="logo">📧 Multi IMAP</span>
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('inbox')">📬 Inbox</button>
+        <button class="tab" onclick="switchTab('reset')">🔑 Reset PW</button>
+        <button class="tab" onclick="switchTab('gen')">🤖 Account Gen</button>
+        <button class="tab" onclick="switchTab('repair')">🔧 Repair</button>
+        <button class="tab" onclick="switchTab('admin')">⚙️ Admin</button>
+    </div>
+    <span style="margin-left:auto;font-size:0.72rem;color:var(--dim)" id="userInfo"></span>
+</div>
+
+<!-- TAB: INBOX -->
+<div id="tabInbox">
+<div class="toolbar">
+    <select id="accSelect" onchange="switchAccount(this.value)" style="width:160px"></select>
+    <input id="fTo" placeholder="Filter TO..." style="width:140px">
+    <input id="fFrom" placeholder="Filter FROM..." style="width:120px">
+    <input id="fSubject" placeholder="Subject..." style="width:120px">
+    <button onclick="loadInbox()">🔍</button>
+    <button onclick="loadInbox()">↻</button>
+    <button onclick="searchAll()">🌐 All</button>
+    <button onclick="searchVerify()" style="opacity:0.7">🔗</button>
+    <label style="font-size:0.72rem;display:flex;align-items:center;gap:3px;color:var(--dim)"><input type="checkbox" id="cbAuto" onchange="toggleAuto()"> Auto</label>
+    <span style="font-size:0.68rem;color:var(--muted);margin-left:auto" id="statusBar"></span>
+</div>
+<div class="layout">
+    <div class="sidebar" id="sidebar"></div>
+    <div id="listPane" style="width:33%;overflow-y:auto;border-right:1px solid var(--border);"></div>
+    <div id="detailPane" style="flex:1;overflow-y:auto;padding:18px;">
+        <div class="placeholder"><div style="font-size:2.5rem;margin-bottom:6px;">📬</div><div>Pilih email untuk melihat isi</div></div>
+    </div>
+</div>
+</div>
+
+<!-- TAB: RESET PASSWORD -->
+<div id="tabReset" style="display:none;">
+<div class="toolbar">
+    <span style="font-size:0.85rem;font-weight:500;color:var(--accent2);">🔑 Bulk Reset Password</span>
+    <select id="resetAccSelect" style="width:160px;margin-left:12px;"></select>
+    <span style="font-size:0.68rem;color:var(--muted);margin-left:auto" id="resetStatus"></span>
+</div>
+<div style="display:flex;height:calc(100vh - 95px);">
+    <div style="width:340px;padding:18px;border-right:1px solid var(--border);overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">📧 Email List</h3>
+        <textarea id="resetEmails" placeholder="email1@domain.com&#10;email2@domain.com" style="width:100%;height:160px;font-family:monospace;font-size:0.76rem;resize:vertical;"></textarea>
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-top:14px;margin-bottom:8px;">🔒 New Password</h3>
+        <input id="resetNewPass" type="text" placeholder="Password baru" value="NewPass123!" style="width:100%;">
+        <p style="font-size:0.62rem;color:var(--muted);margin-top:3px;">Akan diset otomatis setelah link reset ditemukan.</p>
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-top:14px;margin-bottom:8px;">⚙️ Settings</h3>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px;"><label style="font-size:0.72rem;color:var(--dim);">Batch:</label><input id="resetBatch" type="number" value="1" style="width:50px;"><span style="font-size:0.65rem;color:var(--muted)">email/batch</span></div>
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:6px;"><label style="font-size:0.72rem;color:var(--dim);">Delay antar batch:</label><input id="resetDelay" type="number" value="60000" style="width:70px;"><span style="font-size:0.65rem;color:var(--muted)">ms</span></div>
+        <label style="font-size:0.72rem;color:var(--dim);display:block;margin-bottom:4px;"><input type="checkbox" id="resetAutoPoll" checked> Auto poll inbox</label>
+        <label style="font-size:0.72rem;color:var(--dim);display:block;margin-bottom:10px;"><input type="checkbox" id="resetAutoSet" checked> Auto set password</label>
+        <div style="display:flex;gap:6px;"><button class="btn-g" onclick="startBulkReset()">🚀 Start</button><button onclick="stopBulkReset()">⏹ Stop</button><button onclick="clearResetLog()">🗑</button></div>
+    </div>
+    <div style="flex:1;padding:18px;overflow-y:auto;border-right:1px solid var(--border);">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">📋 Log</h3>
+        <div id="resetLog" style="font-family:monospace;font-size:0.72rem;line-height:1.7;color:var(--dim);"></div>
+    </div>
+    <div style="width:320px;padding:18px;overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">✅ Results</h3>
+        <div id="resetResults" style="font-size:0.73rem;"></div>
+    </div>
+</div>
+</div>
+
+<!-- TAB: ACCOUNT GENERATOR -->
+<div id="tabGen" style="display:none;">
+<div class="toolbar">
+    <span style="font-size:0.85rem;font-weight:500;color:var(--accent2);">🤖 Account Generator — Pixel Worlds</span>
+    <span style="font-size:0.68rem;color:var(--muted);margin-left:auto" id="genStatus"></span>
+</div>
+<div style="display:flex;height:calc(100vh - 95px);">
+    <div style="width:340px;padding:18px;border-right:1px solid var(--border);overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">⚙️ Config</h3>
+        <div class="fg"><label>Email Domain</label><input id="genDomain" placeholder="emelku.biz.id" value=""></div>
+        <div class="fg"><label>Email Prefix</label><input id="genPrefix" value="pw" placeholder="pw"></div>
+        <div class="fg"><label>Password (kosong = auto)</label><input id="genPass" placeholder="auto generate"></div>
+        <div class="fg"><label>Jumlah akun</label><input id="genCount" type="number" value="5"></div>
+        <div class="fg"><label>Delay antar akun (ms)</label><input id="genDelay" type="number" value="5000"></div>
+        <div class="fg"><label>IMAP Account (untuk verifikasi)</label><select id="genImapAcc" style="width:100%"></select></div>
+        <div class="fg"><label><input type="checkbox" id="genAutoVerify" checked> Auto verify email</label></div>
+        <div class="fg"><label><input type="checkbox" id="genTutorial"> Auto tutorial (Rawa Rontek harus running)</label></div>
+        <div class="fg" id="rawaStatus" style="font-size:0.7rem;"></div>
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-top:14px;margin-bottom:8px;">🌐 Proxy (rotating)</h3>
+        <textarea id="genProxies" placeholder="socks5://user:pass@host:port&#10;http://host:port&#10;socks5://host:port" style="width:100%;height:80px;font-family:monospace;font-size:0.7rem;resize:vertical;"></textarea>
+        <p style="font-size:0.6rem;color:var(--muted);margin-top:3px;">Satu proxy per baris. Kosong = tanpa proxy. Auto rotate per request.</p>
+        <div style="display:flex;gap:6px;margin-top:14px;">
+            <button class="btn-g" onclick="startGenerate()">🚀 Start</button>
+            <button onclick="stopGenerate()">⏹ Stop</button>
+            <button onclick="clearGenLog()">🗑</button>
+        </div>
+    </div>
+    <div style="flex:1;padding:18px;overflow-y:auto;border-right:1px solid var(--border);">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">📋 Log</h3>
+        <div id="genLog" style="font-family:monospace;font-size:0.72rem;line-height:1.7;color:var(--dim);"></div>
+    </div>
+    <div style="width:350px;padding:18px;overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">✅ Accounts Created</h3>
+        <button onclick="copyGenResults()" style="font-size:0.7rem;margin-bottom:8px;">📋 Copy All</button>
+        <div id="genResults" style="font-size:0.73rem;"></div>
+    </div>
+</div>
+</div>
+
+<!-- TAB: REPAIR ACCOUNTS -->
+<div id="tabRepair" style="display:none;">
+<div class="toolbar">
+    <span style="font-size:0.85rem;font-weight:500;color:var(--accent2);">🔧 Repair Accounts — Fix "User not found" SocialFirst</span>
+    <span style="font-size:0.68rem;color:var(--muted);margin-left:auto" id="repairStatus"></span>
+</div>
+<div style="display:flex;height:calc(100vh - 95px);">
+    <div style="width:380px;padding:18px;border-right:1px solid var(--border);overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">📋 Accounts (email:password)</h3>
+        <p style="font-size:0.68rem;color:var(--muted);margin-bottom:8px;">Masukkan akun yang error "User not found" di Mirai. Format: email:password (satu per baris)</p>
+        <textarea id="repairAccounts" placeholder="email1@domain.com:password1&#10;email2@domain.com:password2" style="width:100%;height:200px;font-family:monospace;font-size:0.76rem;resize:vertical;"></textarea>
+        <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+            <label style="font-size:0.72rem;color:var(--dim);">Delay:</label>
+            <input id="repairDelay" type="number" value="5000" style="width:70px;">
+            <span style="font-size:0.62rem;color:var(--muted)">ms</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:14px;">
+            <button class="btn-g" onclick="startRepair()">🔧 Start Repair</button>
+            <button onclick="stopRepair()">⏹ Stop</button>
+            <button onclick="clearRepairLog()">🗑</button>
+        </div>
+    </div>
+    <div style="flex:1;padding:18px;overflow-y:auto;border-right:1px solid var(--border);">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">📋 Log</h3>
+        <div id="repairLog" style="font-family:monospace;font-size:0.72rem;line-height:1.7;color:var(--dim);"></div>
+    </div>
+    <div style="width:300px;padding:18px;overflow-y:auto;">
+        <h3 style="font-size:0.88rem;color:var(--accent2);margin-bottom:8px;">✅ Repaired</h3>
+        <div id="repairResults" style="font-size:0.73rem;"></div>
+    </div>
+</div>
+</div>
+
+<!-- TAB: ADMIN (login required) -->
+<div id="tabAdmin" style="display:none;">
+    <div id="adminContent"></div>
+</div>
+
+<script>
+let currentAcc=null, accounts=[], autoTimer=null, authToken='';
+
+// ===== AUTH =====
+async function checkAuth() {
+    try {
+        const r = await fetch('/api/check-auth');
+        return r.ok;
+    } catch(e) { return false; }
+}
+
+async function doLogin() {
+    const u = document.getElementById('loginUser').value;
+    const p = document.getElementById('loginPass').value;
+    const r = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+    const d = await r.json();
+    if (d.success) {
+        authToken = d.token;
+        document.getElementById('userInfo').textContent = '🔓 Logged in';
+        renderAdminPanel();
+    } else {
+        document.getElementById('loginErr').textContent = d.error || 'Login gagal';
+    }
+}
+
+async function doLogout() {
+    await fetch('/api/logout',{method:'POST'});
+    authToken = '';
+    document.getElementById('userInfo').textContent = '';
+    renderAdminLogin();
+}
+
+function renderAdminLogin() {
+    document.getElementById('adminContent').innerHTML = `
+        <div class="login-box">
+            <h2>🔐 Admin Login</h2>
+            <input id="loginUser" placeholder="Username" value="admin">
+            <input id="loginPass" type="password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+            <button class="btn-p" onclick="doLogin()">Login</button>
+            <div class="err" id="loginErr"></div>
+        </div>
+    `;
+}
+
+async function renderAdminPanel() {
+    const ok = await checkAuth();
+    if (!ok) { renderAdminLogin(); return; }
+
+    const r = await fetch('/api/accounts');
+    const d = await r.json();
+    const accs = d.accounts || [];
+
+    let html = `<div style="max-width:700px;margin:30px auto;padding:0 20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h2 style="color:var(--accent2);font-size:1.1rem;">⚙️ Manage IMAP Accounts</h2>
+            <div><button class="btn-g" onclick="showAddForm()">+ Tambah</button> <button onclick="doLogout()">🚪 Logout</button></div>
+        </div>
+        <div id="adminList">`;
+
+    accs.forEach(a => {
+        html += `<div class="admin-card">
+            <div class="info">
+                <div class="name">${esc(a.name)}</div>
+                <div class="detail">${esc(a.username)} • ${esc(a.host)}:${a.port} ${a.has_password?'🔑':'⚠️ no pw'}</div>
+            </div>
+            <div class="actions">
+                <button onclick="testAcc('${a.id}')">🔌 Test</button>
+                <button class="btn-r" onclick="deleteAcc('${a.id}')">🗑</button>
+            </div>
+        </div>`;
+    });
+
+    html += `</div><div id="addFormArea"></div></div>`;
+    document.getElementById('adminContent').innerHTML = html;
+}
+
+function showAddForm() {
+    document.getElementById('addFormArea').innerHTML = `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-top:16px;">
+            <h3 style="color:var(--accent2);font-size:0.9rem;margin-bottom:14px;">Tambah Akun IMAP</h3>
+            <div class="fg"><label>ID (unik)</label><input id="aId" placeholder="domain1"></div>
+            <div class="fg"><label>Nama</label><input id="aName" placeholder="Nama tampilan"></div>
+            <div class="fg-row"><div class="fg"><label>Host</label><input id="aHost" placeholder="mail.example.com"></div><div class="fg" style="max-width:80px"><label>Port</label><input id="aPort" value="993" type="number"></div></div>
+            <div class="fg"><label>Username</label><input id="aUser" placeholder="admin@domain.com"></div>
+            <div class="fg"><label>Password</label><input id="aPass" type="password"></div>
+            <div class="fg"><label>Domain</label><input id="aDomain" placeholder="domain.com"></div>
+            <div class="fg"><label><input type="checkbox" id="aTls" checked> TLS/SSL</label></div>
+            <div style="display:flex;gap:8px;"><button class="btn-g" onclick="saveNewAcc()">💾 Simpan</button><button onclick="document.getElementById('addFormArea').innerHTML=''">Batal</button></div>
+            <div id="addMsg" style="font-size:0.78rem;margin-top:8px;"></div>
+        </div>
+    `;
+}
+
+async function saveNewAcc() {
+    const data = {id:gv('aId'),name:gv('aName'),host:gv('aHost'),port:parseInt(gv('aPort'))||993,username:gv('aUser'),password:gv('aPass'),domain:gv('aDomain'),tls:document.getElementById('aTls').checked};
+    if(!data.id||!data.host||!data.username||!data.password){document.getElementById('addMsg').textContent='⚠ Isi semua field!';return;}
+    document.getElementById('addMsg').textContent='⏳ Testing...';
+    const r = await fetch('/api/accounts',{method:'POST',headers:{'Content-Type':'application/json','X-Auth-Token':authToken},body:JSON.stringify(data)});
+    const d = await r.json();
+    if(d.error){document.getElementById('addMsg').innerHTML='<span style="color:var(--red)">❌ '+esc(d.error)+'</span>';}
+    else{await renderAdminPanel();await loadAccounts();}
+}
+
+async function deleteAcc(id) {
+    if(!confirm('Hapus akun '+id+'?'))return;
+    await fetch('/api/accounts/'+id,{method:'DELETE',headers:{'X-Auth-Token':authToken}});
+    await renderAdminPanel();
+    await loadAccounts();
+}
+
+async function testAcc(id) {
+    const r = await fetch('/api/accounts/'+id+'/test',{method:'POST'});
+    const d = await r.json();
+    alert(d.status==='ok'?`✅ OK — ${d.messages} messages`:`❌ ${d.error}`);
+}
+
+// ===== TABS =====
+function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    if(event&&event.target)event.target.classList.add('active');
+    else document.querySelector(`.tab[onclick*="'${tab}'"]`)?.classList.add('active');
+    document.getElementById('tabInbox').style.display = tab==='inbox'?'':'none';
+    document.getElementById('tabReset').style.display = tab==='reset'?'':'none';
+    document.getElementById('tabGen').style.display = tab==='gen'?'':'none';
+    document.getElementById('tabRepair').style.display = tab==='repair'?'':'none';
+    document.getElementById('tabAdmin').style.display = tab==='admin'?'':'none';
+    if (tab==='admin') { checkAuth().then(ok=>ok?renderAdminPanel():renderAdminLogin()); }
+    if (tab==='gen') { renderGenImapSelect(); }
+}
+
+// ===== ACCOUNTS =====
+async function loadAccounts() {
+    try {
+        const r = await fetch('/api/accounts');
+        if (!r.ok) { console.error('Failed to load accounts:', r.status); return; }
+        const d = await r.json();
+        accounts = d.accounts||[];
+        renderSidebar(); renderSelect(); renderResetAccSelect();
+        if (accounts.length>0&&!currentAcc) switchAccount(accounts[0].id);
+    } catch(e) { console.error('loadAccounts error:', e); }
+}
+function renderSidebar() {
+    document.getElementById('sidebar').innerHTML = '<div class="sidebar-t">Akun IMAP</div>'+
+        accounts.map(a=>`<div class="acc-i ${currentAcc===a.id?'active':''}" onclick="switchAccount('${a.id}')"><div class="n">${esc(a.name)}</div><div class="d">${esc(a.domain||a.username)}</div></div>`).join('');
+}
+function renderSelect() { document.getElementById('accSelect').innerHTML = accounts.map(a=>`<option value="${a.id}" ${currentAcc===a.id?'selected':''}>${a.name}</option>`).join(''); }
+function renderResetAccSelect() { document.getElementById('resetAccSelect').innerHTML = accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join(''); }
+function switchAccount(id) { currentAcc=id; renderSidebar(); renderSelect(); loadInbox(); }
+
+// ===== INBOX =====
+async function loadInbox() {
+    if(!currentAcc)return;
+    const list=document.getElementById('listPane');
+    list.innerHTML='<div class="loading">⏳</div>';
+    try {
+        const p=new URLSearchParams({limit:'30'});
+        const to=document.getElementById('fTo').value,from=document.getElementById('fFrom').value,subj=document.getElementById('fSubject').value;
+        if(to)p.set('to',to);if(from)p.set('from',from);if(subj)p.set('subject',subj);
+        const r=await fetch(`/api/accounts/${currentAcc}/inbox?${p}`);
+        const d=await r.json();
+        if(d.error){list.innerHTML=`<div class="error-box">${esc(d.error)}<div class="hint">Cek password & koneksi</div></div>`;return;}
+        if(!d.emails||!d.emails.length){list.innerHTML='<div class="placeholder">📭 Kosong</div>';return;}
+        list.innerHTML=d.emails.map(e=>`<div class="email-row" onclick="openEmail('${currentAcc}','${e.id}',this)"><div class="subj">${esc(e.subject)}</div><div class="meta"><span class="from">${esc(shortAddr(e.from))}</span><span>${shortDate(e.date)}</span></div><div class="meta"><span style="color:var(--muted);font-size:0.62rem">→ ${esc(shortAddr(e.to))}</span></div></div>`).join('');
+        document.getElementById('statusBar').textContent=`${d.emails.length} • ${new Date().toLocaleTimeString()}`;
+    } catch(e){list.innerHTML=`<div class="error-box">${esc(e.message)}</div>`;}
+}
+
+// ===== OPEN EMAIL =====
+async function openEmail(accId,msgId,el) {
+    document.querySelectorAll('.email-row').forEach(e=>e.classList.remove('active'));
+    if(el)el.classList.add('active');
+    const dp=document.getElementById('detailPane');
+    dp.innerHTML='<div class="loading">⏳</div>';
+    try {
+        const r=await fetch(`/api/accounts/${accId}/email/${msgId}`);
+        const d=await r.json();
+        if(d.error){dp.innerHTML=`<div class="error-box">${esc(d.error)}</div>`;return;}
+        let lh='';
+        if(d.links&&d.links.length){
+            const vl=d.links.filter(l=>/verify|confirm|activate|validate|token/i.test(l));
+            const ol=d.links.filter(l=>!/verify|confirm|activate|validate|token/i.test(l));
+            if(vl.length){lh+='<div class="link-section"><h4>🔗 Verification</h4>';vl.forEach(l=>{lh+=`<a href="${l}" target="_blank" class="vlink">${l}</a>`;});lh+='</div>';}
+            if(ol.length){lh+='<div class="link-section"><h4>📎 Links</h4>';ol.slice(0,10).forEach(l=>{lh+=`<a href="${l}" target="_blank">${l}</a>`;});lh+='</div>';}
+        }
+        dp.innerHTML=`<div class="detail-head"><h2>${esc(d.subject)}</h2><div class="row"><b>From:</b> ${esc(d.from)}</div><div class="row"><b>To:</b> ${esc(d.to)}</div><div class="row"><b>Date:</b> ${d.date}</div></div><div class="detail-body"><iframe id="eFrame" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-top-navigation-by-user-activation"></iframe></div>${lh}`;
+        const fr=document.getElementById('eFrame'),doc=fr.contentDocument||fr.contentWindow.document;
+        doc.open();doc.write('<html><head><meta charset="utf-8"><base target="_blank"><style>body{font-family:-apple-system,sans-serif;font-size:14px;line-height:1.6;color:#222;padding:18px;margin:0;word-wrap:break-word;}img{max-width:100%;height:auto;}a{color:#1565c0;}</style></head><body>'+(d.body||'<p style="color:#999">(Kosong)</p>')+'</body></html>');doc.close();
+        setTimeout(()=>{fr.style.height=Math.max(450,doc.body.scrollHeight+50)+'px';},300);
+    } catch(e){dp.innerHTML=`<div class="error-box">${esc(e.message)}</div>`;}
+}
+
+// ===== SEARCH =====
+async function searchAll() {
+    const to=document.getElementById('fTo').value,from=document.getElementById('fFrom').value,subj=document.getElementById('fSubject').value;
+    if(!to&&!from&&!subj){alert('Isi filter!');return;}
+    const list=document.getElementById('listPane');list.innerHTML='<div class="loading">🌐</div>';
+    try{const p=new URLSearchParams({limit:'20'});if(to)p.set('to',to);if(from)p.set('from',from);if(subj)p.set('subject',subj);
+    const r=await fetch(`/api/search/all?${p}`);const d=await r.json();
+    if(!d.results||!d.results.length){list.innerHTML='<div class="placeholder">📭</div>';return;}
+    list.innerHTML=d.results.map(e=>`<div class="email-row" onclick="openEmail('${e.account_id}','${e.id}',this)"><div class="subj">${esc(e.subject)}<span class="tag">${esc(e.account_name)}</span></div><div class="meta"><span class="from">${esc(shortAddr(e.from))}</span><span>${shortDate(e.date)}</span></div></div>`).join('');
+    }catch(e){list.innerHTML=`<div class="error-box">${esc(e.message)}</div>`;}
+}
+async function searchVerify() {
+    if(!currentAcc)return;const dp=document.getElementById('detailPane');dp.innerHTML='<div class="loading">🔍</div>';
+    const to=document.getElementById('fTo').value;
+    try{const p=new URLSearchParams({limit:'10'});if(to)p.set('to',to);
+    const r=await fetch(`/api/accounts/${currentAcc}/verification?${p}`);const d=await r.json();
+    if(!d.results||!d.results.length){dp.innerHTML='<div class="placeholder">📭 No verification emails</div>';return;}
+    dp.innerHTML='<div class="detail-head"><h2>🔗 Verification Emails</h2></div>'+d.results.map(r=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px;"><div style="font-weight:500;font-size:0.82rem;">${esc(r.subject)}</div><div style="font-size:0.68rem;color:var(--dim);">To: ${esc(r.to)} • ${r.date}</div>${r.verify_links.length?r.verify_links.map(l=>`<a href="${l}" target="_blank" class="vlink">${l}</a>`).join(''):'<div style="color:var(--red);font-size:0.72rem;">No link</div>'}</div>`).join('');
+    }catch(e){dp.innerHTML=`<div class="error-box">${esc(e.message)}</div>`;}
+}
+
+// ===== BULK RESET =====
+let resetRunning=false, resetResults=[];
+function resetLog(msg,color){const l=document.getElementById('resetLog');l.innerHTML+=`<div style="color:${color||'var(--dim)'}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;l.scrollTop=l.scrollHeight;}
+function clearResetLog(){document.getElementById('resetLog').innerHTML='';document.getElementById('resetResults').innerHTML='';resetResults=[];}
+function stopBulkReset(){resetRunning=false;resetLog('⏹ Stopped','var(--yellow)');}
+function renderResults(){document.getElementById('resetResults').innerHTML=resetResults.map(r=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;"><div style="font-weight:500;font-size:0.78rem;color:${r.status==='done'?'var(--green)':r.status==='sent'?'var(--yellow)':'var(--red)'}">${r.status==='done'?'✅':'📧'} ${esc(r.email)}</div>${r.link?`<div style="font-size:0.62rem;color:var(--accent2);word-break:break-all;margin-top:2px;"><a href="${r.link}" target="_blank" style="color:var(--accent2)">${r.link}</a></div>`:''}${r.password?`<div style="font-size:0.68rem;color:var(--green);margin-top:2px;">🔒 ${esc(r.password)}</div>`:''}</div>`).join('');}
+
+async function pollResetLink(email,maxWait){
+    const accId=document.getElementById('resetAccSelect').value;
+    if(!accId){resetLog('⚠ Pilih akun IMAP!','var(--yellow)');return null;}
+    const deadline=Date.now()+maxWait;let attempt=0;
+    while(Date.now()<deadline&&resetRunning){
+        attempt++;resetLog(`  🔍 [${attempt}] Polling...`);
+        try{const r=await fetch(`/api/accounts/${accId}/inbox?to=${encodeURIComponent(email)}&limit=5`);const d=await r.json();
+        if(d.emails&&d.emails.length){for(const em of d.emails){if(em.subject&&(em.subject.toLowerCase().includes('reset')||em.subject.toLowerCase().includes('password')||em.subject.toLowerCase().includes('recovery'))){
+            const r2=await fetch(`/api/accounts/${accId}/email/${em.id}`);const d2=await r2.json();
+            if(d2.links){const rl=d2.links.find(l=>l.includes('token')||l.includes('reset')||l.includes('password'));if(rl){resetLog('  ✅ Link found!','var(--green)');return rl;}}}}}}catch(e){}
+        await new Promise(r=>setTimeout(r,3000));
+    }
+    return null;
+}
+
+async function setPasswordFromLink(link,pw){
+    try{const r=await fetch('/api/reset-set-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({link,password:pw})});const d=await r.json();
+    if(d.success){resetLog(`    ✅ Method: ${d.method}`,'var(--green)');return true;}
+    resetLog(`    ❌ ${d.error||'Unknown error'}`,'var(--red)');
+    if(d.raw)resetLog(`    Raw: ${d.raw.substring(0,150)}`,'var(--muted)');
+    return false;}catch(e){resetLog(`    ❌ ${e.message}`,'var(--red)');return false;}
+}
+
+async function startBulkReset(){
+    const emails=document.getElementById('resetEmails').value.trim().split('\n').map(e=>e.trim()).filter(e=>e&&e.includes('@'));
+    const batchSize=parseInt(document.getElementById('resetBatch').value)||3;
+    const batchDelay=parseInt(document.getElementById('resetDelay').value)||10000;
+    const newPass=document.getElementById('resetNewPass').value.trim();
+    const autoPoll=document.getElementById('resetAutoPoll').checked;
+    const autoSet=document.getElementById('resetAutoSet').checked;
+    const accId=document.getElementById('resetAccSelect').value;
+    if(!emails.length){alert('Masukkan email!');return;}
+    if(autoSet&&!newPass){alert('Isi password baru!');return;}
+    if(autoPoll&&!accId){alert('Pilih akun IMAP!');return;}
+
+    resetRunning=true;resetResults=[];
+    const totalBatches=Math.ceil(emails.length/batchSize);
+    resetLog(`🚀 ${emails.length} email(s) | ${totalBatches} batch x ${batchSize} | pw: ${newPass}`,'var(--accent2)');
+    let ok=0,fail=0;
+
+    for(let b=0;b<totalBatches&&resetRunning;b++){
+        const batch=emails.slice(b*batchSize,(b+1)*batchSize);
+        resetLog(`\n━━━ 📦 Batch ${b+1}/${totalBatches} (${batch.length} emails) ━━━`,'var(--accent2)');
+        document.getElementById('resetStatus').textContent=`Batch ${b+1}/${totalBatches} | ✅${ok} ❌${fail}`;
+
+        // STEP 1: Send semua reset dalam batch ini
+        const batchItems=[];
+        for(const email of batch){
+            if(!resetRunning)break;
+            resetLog(`  📧 ${email}`);
+            let sent=false;
+            for(let retry=0;retry<5&&!sent&&resetRunning;retry++){
+                try{
+                    const r=await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
+                    const d=await r.json();
+                    if(d.success){sent=true;resetLog(`    ✅ Sent`,'var(--green)');}
+                    else if(d.error&&d.error.includes('throttled')){
+                        resetLog(`    ⏳ Rate limited, wait 60s (${retry+1}/5)`,'var(--yellow)');
+                        await new Promise(r=>setTimeout(r,60000));
+                    }else{resetLog(`    ❌ ${d.error}`,'var(--red)');break;}
+                }catch(e){resetLog(`    ❌ ${e.message}`,'var(--red)');break;}
+                await new Promise(r=>setTimeout(r,5000)); // 5s between sends to avoid rate limit
+            }
+            batchItems.push({email,sent,link:null,done:false});
+            resetResults.push({email,status:sent?'sent':'error'});
+            if(!sent)fail++;
+            renderResults();
+        }
+
+        if(!autoPoll||!resetRunning){ok+=batchItems.filter(x=>x.sent).length;continue;}
+
+        // STEP 2: Tunggu email masuk
+        const sentItems=batchItems.filter(x=>x.sent);
+        if(!sentItems.length)continue;
+
+        resetLog(`  ⏳ Waiting 8s for emails...`,'var(--dim)');
+        await new Promise(r=>setTimeout(r,8000));
+
+        // STEP 3: Poll + set password SATU PER SATU sampai semua selesai
+        let allDone=false;
+        let round=0;
+        const maxRounds=5; // max 5 round polling per batch
+
+        while(!allDone&&round<maxRounds&&resetRunning){
+            round++;
+            const remaining=sentItems.filter(x=>!x.done);
+            if(!remaining.length){allDone=true;break;}
+
+            resetLog(`  🔄 Round ${round}/${maxRounds} — ${remaining.length} remaining`,'var(--dim)');
+
+            for(const item of remaining){
+                if(!resetRunning)break;
+                let link=null;
+
+                // Poll 3x untuk email ini
+                for(let p=1;p<=3&&!link;p++){
+                    try{
+                        const r=await fetch(`/api/accounts/${accId}/inbox?to=${encodeURIComponent(item.email)}&limit=3`);
+                        if(!r.ok){await new Promise(r=>setTimeout(r,5000));continue;} // skip on server error
+                        const d=await r.json();
+                        if(d.emails&&d.emails.length){
+                            for(const em of d.emails){
+                                if(em.subject&&(em.subject.toLowerCase().includes('reset')||em.subject.toLowerCase().includes('password')||em.subject.toLowerCase().includes('recovery'))){
+                                    const r2=await fetch(`/api/accounts/${accId}/email/${em.id}`);
+                                    if(!r2.ok)continue;
+                                    const d2=await r2.json();
+                                    if(d2.links){const rl=d2.links.find(l=>l.includes('token')||l.includes('reset')||l.includes('password'));if(rl){link=rl;break;}}
+                                }
+                            }
+                        }
+                    }catch(e){/* IMAP timeout, skip */}
+                    if(!link)await new Promise(r=>setTimeout(r,5000));
+                }
+
+                if(link){
+                    item.link=link;
+                    const idx=resetResults.findIndex(r=>r.email===item.email);
+                    resetLog(`  ✅ ${item.email.split('@')[0]} — link found`,'var(--green)');
+                    if(idx>=0)resetResults[idx].link=link;
+
+                    // Set password
+                    if(autoSet&&newPass){
+                        resetLog(`    🔒 Setting pw...`);
+                        const s=await setPasswordFromLink(link,newPass);
+                        if(s){ok++;item.done=true;if(idx>=0){resetResults[idx].status='done';resetResults[idx].password=newPass;}resetLog(`    ✅ PW set: ${newPass}`,'var(--green)');}
+                        else{fail++;item.done=true;if(idx>=0)resetResults[idx].status='error';resetLog(`    ❌ Set gagal`,'var(--red)');}
+                    }else{ok++;item.done=true;if(idx>=0)resetResults[idx].status='done';}
+                    renderResults();
+                }
+            }
+
+            // Kalau masih ada yang belum done, re-send dan tunggu lagi
+            const stillRemaining=sentItems.filter(x=>!x.done);
+            if(stillRemaining.length&&round<maxRounds&&resetRunning){
+                resetLog(`  🔄 ${stillRemaining.length} belum dapat, re-send & wait 10s...`,'var(--yellow)');
+                for(const item of stillRemaining){
+                    try{await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:item.email})});}catch(e){}
+                    await new Promise(r=>setTimeout(r,1500));
+                }
+                await new Promise(r=>setTimeout(r,10000));
+            }
+        }
+
+        // Mark yang masih belum done sebagai fail
+        for(const item of sentItems){
+            if(!item.done){
+                fail++;item.done=true;
+                const idx=resetResults.findIndex(r=>r.email===item.email);
+                if(idx>=0)resetResults[idx].status='error';
+                resetLog(`  ❌ ${item.email.split('@')[0]} — timeout`,'var(--red)');
+                renderResults();
+            }
+        }
+
+        // Delay antar batch
+        if(b<totalBatches-1&&resetRunning){
+            resetLog(`  ⏸ Batch delay ${batchDelay/1000}s...`,'var(--dim)');
+            await new Promise(r=>setTimeout(r,batchDelay));
+        }
+    }
+
+    resetRunning=false;
+    resetLog(`\n🏁 Selesai! ✅${ok} | ❌${fail}`,'var(--accent2)');
+    document.getElementById('resetStatus').textContent=`✅${ok} ❌${fail}`;
+}
+
+// ===== ACCOUNT GENERATOR =====
+let genRunning=false, genResults=[];
+
+function genLog(msg,color){const l=document.getElementById('genLog');l.innerHTML+=`<div style="color:${color||'var(--dim)'}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;l.scrollTop=l.scrollHeight;}
+function clearGenLog(){document.getElementById('genLog').innerHTML='';document.getElementById('genResults').innerHTML='';genResults=[];}
+function stopGenerate(){genRunning=false;genLog('⏹ Stopped','var(--yellow)');}
+function renderGenImapSelect(){
+    document.getElementById('genImapAcc').innerHTML='<option value="">-- Tanpa verifikasi --</option>'+accounts.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+    document.getElementById('rawaStatus').innerHTML='<span style="color:var(--green)">✓ Tutorial: Built-in game client (no Rawa Rontek needed)</span>';
+    // Auto-fill domain from first account if empty
+    if(!document.getElementById('genDomain').value && accounts.length>0 && accounts[0].domain){
+        document.getElementById('genDomain').value = accounts[0].domain;
+    }
+}
+
+function renderGenResults(){
+    document.getElementById('genResults').innerHTML=genResults.map(r=>`
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:6px;">
+            <div style="font-weight:500;font-size:0.78rem;color:${r.success?'var(--green)':'var(--red)'}">${r.success?'✅':'❌'} ${esc(r.email)}</div>
+            ${r.success?`<div style="font-size:0.68rem;color:var(--dim);margin-top:2px;">PW: ${esc(r.password)} | User: ${esc(r.username)}</div>`:''}
+            ${r.verified?'<div style="font-size:0.65rem;color:var(--green);">✓ Verified</div>':''}
+        </div>
+    `).join('');
+}
+
+function copyGenResults(){
+    const text=genResults.filter(r=>r.success).map(r=>`${r.email}:${r.password}`).join('\n');
+    navigator.clipboard.writeText(text);
+    alert(`Copied ${genResults.filter(r=>r.success).length} accounts!`);
+}
+
+async function startGenerate(){
+    const domain=document.getElementById('genDomain').value.trim();
+    const prefix=document.getElementById('genPrefix').value.trim()||'pw';
+    const password=document.getElementById('genPass').value.trim();
+    const count=parseInt(document.getElementById('genCount').value)||5;
+    const delay=parseInt(document.getElementById('genDelay').value)||5000;
+    const imapAcc=document.getElementById('genImapAcc').value;
+    const autoVerify=document.getElementById('genAutoVerify').checked;
+    const doTutorial=document.getElementById('genTutorial').checked;
+
+    if(!domain){alert('Isi email domain!');return;}
+
+    genRunning=true;genResults=[];
+    genLog(`🚀 Generating ${count} account(s) | domain: ${domain} | prefix: ${prefix}`,'var(--accent2)');
+
+    // Set proxies
+    const proxies = document.getElementById('genProxies').value.trim();
+    if (proxies) {
+        await fetch('/api/set-proxies', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({proxies: proxies})});
+        genLog(`🌐 Proxies set: ${proxies.split('\n').filter(p=>p.trim()).length} proxy(s)`, 'var(--dim)');
+    } else {
+        await fetch('/api/set-proxies', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({proxies: []})});
+        genLog('🌐 No proxy (direct connection)', 'var(--dim)');
+    }
+
+    document.getElementById('genStatus').textContent=`0/${count}`;
+    let ok=0,fail=0;
+
+    for(let i=0;i<count&&genRunning;i++){
+        document.getElementById('genStatus').textContent=`${i+1}/${count} (✅${ok} ❌${fail})`;
+        const emailAddr=`${prefix}${Math.random().toString(36).slice(2,10)}@${domain}`;
+        genLog(`\n📧 [${i+1}/${count}] ${emailAddr}`);
+
+        try{
+            const r=await fetch('/api/generate-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:emailAddr,password:password||'',tutorial:doTutorial})});
+            const d=await r.json();
+
+            if(d.success){
+                ok++;
+                genLog(`  ✅ Created: ${d.username} | PW: ${d.password}`,'var(--green)');
+                if(d.logs)d.logs.forEach(l=>genLog(`    ${l}`,'var(--dim)'));
+                const item={email:emailAddr,password:d.password,username:d.username,success:true,verified:false};
+
+                // Auto verify via IMAP
+                if(autoVerify&&imapAcc&&genRunning){
+                    genLog(`  🔍 Polling verification email...`);
+                    await new Promise(r=>setTimeout(r,5000));
+                    let verified=false;
+                    for(let p=1;p<=5&&!verified&&genRunning;p++){
+                        try{
+                            const ir=await fetch(`/api/accounts/${imapAcc}/inbox?to=${encodeURIComponent(emailAddr)}&limit=3`);
+                            if(!ir.ok){await new Promise(r=>setTimeout(r,4000));continue;}
+                            const id=await ir.json();
+                            if(id.emails&&id.emails.length){
+                                for(const em of id.emails){
+                                    if(em.subject&&(em.subject.toLowerCase().includes('verify')||em.subject.toLowerCase().includes('confirm'))){
+                                        const er=await fetch(`/api/accounts/${imapAcc}/email/${em.id}`);
+                                        if(!er.ok)continue;
+                                        const ed=await er.json();
+                                        if(ed.links){
+                                            const vl=ed.links.find(l=>l.includes('verify')||l.includes('confirm')||l.includes('activate'));
+                                            if(vl){
+                                                genLog(`  🔗 Verify link found, clicking...`,'var(--green)');
+                                                try{await fetch('/api/visit-link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:vl})});}catch(e){}
+                                                verified=true;item.verified=true;
+                                                genLog(`  ✅ Verified!`,'var(--green)');
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }catch(e){}
+                        if(!verified)await new Promise(r=>setTimeout(r,4000));
+                    }
+                    if(!verified)genLog(`  ⚠ Verification email not found`,'var(--yellow)');
+                }
+
+                genResults.push(item);
+            }else{
+                fail++;
+                genLog(`  ❌ ${d.error||'Failed'}`,'var(--red)');
+                if(d.logs)d.logs.forEach(l=>genLog(`    ${l}`,'var(--dim)'));
+                genResults.push({email:emailAddr,password:'',username:'',success:false});
+            }
+        }catch(e){
+            fail++;genLog(`  ❌ ${e.message}`,'var(--red)');
+            genResults.push({email:emailAddr,password:'',username:'',success:false});
+        }
+
+        renderGenResults();
+        if(i<count-1&&genRunning)await new Promise(r=>setTimeout(r,delay));
+    }
+
+    genRunning=false;
+    genLog(`\n🏁 Done! ✅${ok} | ❌${fail}`,'var(--accent2)');
+    document.getElementById('genStatus').textContent=`✅${ok} ❌${fail}`;
+}
+
+// ===== REPAIR ACCOUNTS =====
+let repairRunning=false;
+
+function repairLog(msg,color){const l=document.getElementById('repairLog');l.innerHTML+=`<div style="color:${color||'var(--dim)'}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;l.scrollTop=l.scrollHeight;}
+function clearRepairLog(){document.getElementById('repairLog').innerHTML='';document.getElementById('repairResults').innerHTML='';}
+function stopRepair(){repairRunning=false;repairLog('⏹ Stopped','var(--yellow)');}
+
+async function startRepair(){
+    const lines=document.getElementById('repairAccounts').value.trim().split('\n').map(l=>l.trim()).filter(l=>l.includes(':'));
+    const delay=parseInt(document.getElementById('repairDelay').value)||5000;
+    if(!lines.length){alert('Masukkan akun (email:password)!');return;}
+
+    repairRunning=true;
+    repairLog(`🔧 Repairing ${lines.length} account(s)...`,'var(--accent2)');
+    document.getElementById('repairStatus').textContent=`0/${lines.length}`;
+    let ok=0,fail=0;
+    const results=[];
+
+    for(let i=0;i<lines.length&&repairRunning;i++){
+        const [email,password]=lines[i].split(':',2);
+        if(!email||!password){repairLog(`  ⚠ Skip invalid: ${lines[i]}`,'var(--yellow)');continue;}
+
+        document.getElementById('repairStatus').textContent=`${i+1}/${lines.length} (✅${ok} ❌${fail})`;
+        repairLog(`📧 [${i+1}] ${email}`);
+
+        try{
+            const r=await fetch('/api/repair-account',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+            const d=await r.json();
+            if(d.success){
+                ok++;
+                repairLog(`  ✅ Repaired! PFID: ${d.playfab_id}`,'var(--green)');
+                results.push({email,status:'ok',pfid:d.playfab_id});
+            }else{
+                fail++;
+                repairLog(`  ❌ ${d.error}`,'var(--red)');
+                results.push({email,status:'fail',error:d.error});
+            }
+        }catch(e){
+            fail++;
+            repairLog(`  ❌ ${e.message}`,'var(--red)');
+            results.push({email,status:'fail',error:e.message});
+        }
+
+        // Render results
+        document.getElementById('repairResults').innerHTML=results.map(r=>`
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:5px;padding:6px 8px;margin-bottom:4px;font-size:0.72rem;">
+                <span style="color:${r.status==='ok'?'var(--green)':'var(--red)'}">${r.status==='ok'?'✅':'❌'}</span>
+                ${esc(r.email)} ${r.pfid?`<span style="color:var(--dim)">${r.pfid}</span>`:''}
+            </div>
+        `).join('');
+
+        if(i<lines.length-1&&repairRunning)await new Promise(r=>setTimeout(r,delay));
+    }
+
+    repairRunning=false;
+    repairLog(`\n🏁 Done! ✅${ok} | ❌${fail}`,'var(--accent2)');
+    document.getElementById('repairStatus').textContent=`✅${ok} ❌${fail}`;
+}
+
+// ===== UTILS =====
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function gv(id){return(document.getElementById(id).value||'').trim();}
+function shortAddr(s){const m=(s||'').match(/<([^>]+)>/);return m?m[1]:(s||'').slice(0,30);}
+function shortDate(s){return s?(s.split(' ')[0]||s):'';}
+function toggleAuto(){if(document.getElementById('cbAuto').checked){autoTimer=setInterval(loadInbox,10000);}else{if(autoTimer){clearInterval(autoTimer);autoTimer=null;}}}
+document.querySelectorAll('.toolbar input').forEach(el=>{el.addEventListener('keydown',e=>{if(e.key==='Enter')loadInbox();});});
+loadAccounts();
+</script>
+</body>
+</html>
