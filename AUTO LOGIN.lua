@@ -553,8 +553,13 @@ if #active_bots == 0 then
     return
 end
 
--- ================== KEEP ALIVE ==================
+-- ================== KEEP ALIVE + INFO DISPLAY ==================
 log("🔋 Keep-Alive aktif | Tekan Stop untuk hentikan")
+log("")
+
+-- Display bot info setiap 30 detik
+local INFO_INTERVAL = 30000
+local last_info_time = 0
 
 while true do
     local online = 0
@@ -566,5 +571,35 @@ while true do
         log("⚠️ Semua bot disconnect. Script berhenti.")
         break
     end
+
+    -- Tampilkan info level & gems setiap INFO_INTERVAL
+    if now_ms() - last_info_time >= INFO_INTERVAL then
+        last_info_time = now_ms()
+        log("")
+        log("┌─── 📊 BOT STATUS ─────────────────────────┐")
+        log("│ Online: " .. online .. "/" .. #active_bots .. " | " .. datetime.format("%H:%M:%S"))
+        log("├────────────────────────────────────────────┤")
+        for i, b in ipairs(active_bots) do
+            local info_ok, info_str = pcall(function()
+                local bname = b:name() or "?"
+                local blevel = b.level or 0
+                local bgems = b.gems or 0
+                local bstatus = b.status or "?"
+                local bworld = ""
+                pcall(function() bworld = b:get_world_name() or "" end)
+                local world_str = bworld ~= "" and (" | 🌍 " .. bworld) or ""
+                return "│ " .. string.format("%-20s", bname) .. " Lv." .. blevel .. " | 💎" .. bgems .. " | " .. bstatus .. world_str
+            end)
+            if info_ok then
+                log(info_str)
+            else
+                local bname = ""
+                pcall(function() bname = b:name() or "?" end)
+                log("│ " .. bname .. " — ❌ info unavailable")
+            end
+        end
+        log("└────────────────────────────────────────────┘")
+    end
+
     sleep(KEEPALIVE_INTERVAL)
 end
