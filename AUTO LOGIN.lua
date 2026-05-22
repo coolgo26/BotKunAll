@@ -52,13 +52,13 @@ local accounts = {
 "pigeheqixila@wshu.net:Bewusebafiwiz#@335"
 }
 
-local LOGIN_DELAY_MIN    = 500
-local LOGIN_DELAY_MAX    = 1000
-local CONNECT_TIMEOUT    = 20000
+local LOGIN_DELAY_MIN    = 1000
+local LOGIN_DELAY_MAX    = 2500
+local CONNECT_TIMEOUT    = 25000
 local POLL_INTERVAL      = 300
 local KEEPALIVE_INTERVAL = 10000
-local BATCH_SIZE         = 5
-local BATCH_DELAY        = 500
+local BATCH_SIZE         = 3
+local BATCH_DELAY        = 3000
 
 -- Email Verification
 local CHECK_VERIFICATION = true
@@ -299,32 +299,114 @@ local function loginSingle(i, acc)
         return
     end
 
-    -- Tunggu connected
-    local start = now_ms()
+    -- Tunggu connected (dengan retry untuk jr=5 dan jr=11)
+    local MAX_RETRIES = 3
     local connected = false
     local last_state = "Unknown"
+    local reject_reason = ""
 
-    while now_ms() - start < CONNECT_TIMEOUT do
-        local s_ok, state = pcall(function() return bot:state() end)
-        if not s_ok then
-            sleep(POLL_INTERVAL)
-        else
-            last_state = tostring(state)
-            if state == "MenuIdle" or state == "InWorld" then
-                connected = true
-                break
-            elseif state == "Failed" then
-                break
+    for retry = 1, MAX_RETRIES do
+        local start = now_ms()
+        connected = false
+
+        -- Listen untuk join reject
+        local jr_code = nil
+        local jr_listener = nil
+        pcall(function()
+            jr_listener = bot:on(events.PACKET_RECEIVED, function(pkt)
+                if pkt and pkt.type == "JoinReject" then
+                    jr_code = pkt.reason or pkt.code or pkt.jr
+                end
+            end)
+        end)
+        -- Fallback: cek via on_disconnect atau error message
+        pcall(function()
+            bot:on(events.DISCONNECTED, function(reason)
+                if reason then
+                    local r = tostring(reason)
+                    if r:find("jr=5") or r:find("jr=11") or r:find("rate") or r:find("maintenance") then
+                        jr_code = tonumber(r:match("jr=(%d+)")) or -1
+                    end
+                end
+            end)
+        end)
+
+        while now_ms() - start < CONNECT_TIMEOUT do
+            local s_ok, state = pcall(function() return bot:state() end)
+            if not s_ok then
+                sleep(POLL_INTERVAL)
+            else
+                last_state = tostring(state)
+                if state == "MenuIdle" or state == "InWorld" then
+                    connected = true
+                    break
+                elseif state == "Failed" or state == "Disconnected" then
+                    break
+                end
+                sleep(POLL_INTERVAL)
             end
-            sleep(POLL_INTERVAL)
+        end
+
+        -- Remove listener
+        if jr_listener then
+            pcall(function() bot:remove_listener(jr_listener) end)
+        end
+
+        if connected then
+            break -- Berhasil konek!
+        end
+
+        -- Cek apakah reject karena jr=5 atau jr=11
+        local is_retryable = false
+        if jr_code == 5 then
+            reject_reason = "jr=5 (Rate Limited)"
+            is_retryable = true
+        elseif jr_code == 11 then
+            reject_reason = "jr=11 (Server Full/Maintenance)"
+            is_retryable = true
+        else
+            -- Cek dari state/error message
+            local err_msg = ""
+            pcall(function() err_msg = tostring(bot:get_error()) end)
+            if err_msg:find("5") or err_msg:find("rate") then
+                reject_reason = "jr=5 (Rate Limited)"
+                is_retryable = true
+            elseif err_msg:find("11") or err_msg:find("maintenance") or err_msg:find("full") then
+                reject_reason = "jr=11 (Server Full/Maintenance)"
+                is_retryable = true
+            else
+                reject_reason = last_state == "Failed" and "Rejected/Banned" or "Timeout"
+                is_retryable = false
+            end
+        end
+
+        if not is_retryable then
+            break -- Tidak bisa di-retry (banned, dll)
+        end
+
+        -- Retry dengan delay
+        if retry < MAX_RETRIES then
+            local delay = 0
+            if jr_code == 5 then
+                delay = 5000 + (retry * 3000) -- jr=5: tunggu 5-11 detik
+            elseif jr_code == 11 then
+                delay = 10000 + (retry * 5000) -- jr=11: tunggu 10-20 detik
+            else
+                delay = 5000
+            end
+            log("  ⚠️ " .. reject_reason .. " → retry " .. retry .. "/" .. MAX_RETRIES .. " (wait " .. math.floor(delay/1000) .. "s)")
+            
+            -- Disconnect & reconnect
+            pcall(function() bot:disconnect() end)
+            sleep(delay)
+            pcall(function() bot:connect() end)
         end
     end
 
     if not connected then
-        local reason = last_state == "Failed" and "Rejected/Banned" or "Timeout"
-        log("  ❌ " .. reason)
+        log("  ❌ " .. reject_reason)
         fail_count = fail_count + 1
-        table.insert(failed_accounts, {email, reason})
+        table.insert(failed_accounts, {email, reject_reason})
         pcall(function() removeClient(bot:name()) end)
         return
     end
@@ -391,7 +473,7 @@ for batch_start = 1, #accounts, BATCH_SIZE do
         sleep(LOGIN_DELAY_MIN)
     end
 
-    sleep(CONNECT_TIMEOUT + TUTORIAL_TIMEOUT + 10000)
+    sleep(CONNECT_TIMEOUT + TUTORIAL_TIMEOUT + 30000)
 
     for _, tid in ipairs(threads) do
         pcall(removeThread, tid)
