@@ -1,64 +1,15 @@
 -- ================== KONFIGURASI ==================
 local accounts = {
-    "tegusewozuxum@wshu.net:Tibiqanecalol@$629",
-"rizobovo@wshu.net:Nucogala$!505",
-"jeyijoqebomup@wshu.net:Ficurawa!#494",
-"haroqiqoxubeg@wshu.net:Wavizayejup%@317",
-"qemowuweqamib@wshu.net:Zayejivuxorova$%413",
-"wekagadexa@wshu.net:Kesexetesuq#%150",
-"mujuxalesuj@wshu.net:Denoretigi!%837",
-"domaxuqesomatu@wshu.net:Navodusec!$965",
-"xufifabuvac@wshu.net:Husaxulevoh@!679",
-"nanusowet@wshu.net:Vehafajiw#!906",
-"ramudibupuqula@wshu.net:Qafegeqebarima%@969",
-"zopezusesezace@wshu.net:Hawuwixupipo@#693",
-"laxawujikavuv@wshu.net:Yovojivatigedu%@285",
-"firacupubuliw@wshu.net:Siyuceqaxovoy!@413",
-"fuperalotayagi@wshu.net:Kamocefedapeta#!155",
-"cizonacaza@wshu.net:Hupewoxolora#%143",
-"xacutowanope@wshu.net:Lixifisesewox#%467",
-"pocuhexejose@wshu.net:Susudelej@%532",
-"pezobitipay@wshu.net:Womovudakotog%%632",
-"zolujucudaqawi@wshu.net:Higejukaf%#165",
-"dusimopojoc@wshu.net:Liziriwu!%881",
-"voyuguvabe@wshu.net:Befeqozuge%#768",
-"yafohidigin@wshu.net:Niramaya!%537",
-"ziloluvege@wshu.net:Buzumenoda$!163",
-"velitete@wshu.net:Mewalejened#$711",
-"ruvopefej@wshu.net:Ficotiruni@%694",
-"judipixigato@wshu.net:Cosiyabolemo#$716",
-"panedeyoxuwubi@wshu.net:Fatuyepagububo$#533",
-"bejenugejudonu@wshu.net:Pajaziwosorasa%!118",
-"duhapoyayud@wshu.net:Duhajupucux#!352",
-"vocejababujove@wshu.net:Fotadefat$#915",
-"seqawayis@wshu.net:Gogojedojexe%%485",
-"fujifiho@wshu.net:Fasatuvoz@#148",
-"qadediteco@wshu.net:Tekocuko#$330",
-"vapufekucad@wshu.net:Mapedaviloxo$#651",
-"ponitocoqow@wshu.net:Vufodura%@864",
-"wiwuvefariver@wshu.net:Vukifahudow#!460",
-"todikinuk@wshu.net:Fewujomuko%!419",
-"fexuyuceme@wshu.net:Rihehewic##792",
-"keliyeketatek@wshu.net:Tedapupok@%518",
-"nifanoxumebog@wshu.net:Guzulumeguh$@517",
-"nodufirab@wshu.net:Wajumiziv$@131",
-"hobasaxiyena@wshu.net:Qibujehu@#421",
-"jufatapi@wshu.net:Tekaxezudimex%$789",
-"wolimucuke@wshu.net:Yewimebewuva%%570",
-"manovojajasulu@wshu.net:Piqezuzama##629",
-"renekizajilip@wshu.net:Napaxijawogo@#627",
-"pesadefadinat@wshu.net:Hiwuzizazo!#803",
-"hazurubife@wshu.net:Dogejawasod@#608",
-"pigeheqixila@wshu.net:Bewusebafiwiz#@335"
+    -- Masukkan akun disini format: "email:password"
 }
 
-local LOGIN_DELAY_MIN    = 1000
-local LOGIN_DELAY_MAX    = 2500
-local CONNECT_TIMEOUT    = 25000
-local POLL_INTERVAL      = 300
+local LOGIN_DELAY_MIN    = 300
+local LOGIN_DELAY_MAX    = 800
+local CONNECT_TIMEOUT    = 15000
+local POLL_INTERVAL      = 150
 local KEEPALIVE_INTERVAL = 10000
-local BATCH_SIZE         = 3
-local BATCH_DELAY        = 3000
+local BATCH_SIZE         = 6
+local BATCH_DELAY        = 500
 
 -- Email Verification
 local CHECK_VERIFICATION = true
@@ -67,7 +18,7 @@ local UNVERIFIED_FILE    = "unverified_accounts.txt"
 
 -- Tutorial
 local CHECK_TUTORIAL     = true
-local TUTORIAL_TIMEOUT   = 45000
+local TUTORIAL_TIMEOUT   = 30000
 
 -- File output
 local SUCCESS_FILE       = "success_accounts.txt"
@@ -80,7 +31,7 @@ if EXECUTION_SCOPE ~= "global" then
 end
 
 log("╔══════════════════════════════════════════════╗")
-log("║  🔐 AUTO LOGIN + TUTORIAL v4.1              ║")
+log("║  🔐 AUTO LOGIN + TUTORIAL v4.2 FAST          ║")
 log("║  🤖 Multi-Account Manager by Mirai          ║")
 log("╚══════════════════════════════════════════════╝")
 log("")
@@ -159,13 +110,13 @@ local function checkEmailVerification(bot, email)
         pcall(function() st = tostring(bot:state()) end)
         if st == "MenuIdle" then
             pcall(function() bot:warp("PIXELSTATION") end)
-            sleep(3000)
+            sleep(2000)
             local ns = ""
             pcall(function() ns = tostring(bot:state()) end)
             if ns == "InWorld" then
                 status = "verified"
                 pcall(function() bot:warp("EXIT") end)
-                sleep(1500)
+                sleep(1000)
             end
         elseif st == "InWorld" then
             status = "verified"
@@ -198,12 +149,12 @@ local function runTutorial(bot, email)
     log("  🎓 " .. email .. " → Lv." .. tostring(level or "?") .. " 🔍 cek tutorial...")
 
     -- Pastikan MenuIdle
-    local deadline = now_ms() + 10000
+    local deadline = now_ms() + 8000
     while now_ms() < deadline do
         local st = ""
         pcall(function() st = tostring(bot:state()) end)
         if st == "MenuIdle" then break end
-        sleep(500)
+        sleep(300)
     end
 
     local st = ""
@@ -213,7 +164,7 @@ local function runTutorial(bot, email)
         return
     end
 
-    sleep(1000)
+    sleep(800)
 
     -- Listener tutorial done
     local tutorialDone = false
@@ -234,8 +185,8 @@ local function runTutorial(bot, email)
         return
     end
 
-    -- Tunggu 5s cek state
-    sleep(5000)
+    -- Tunggu 3s cek state
+    sleep(3000)
     local state_after = ""
     pcall(function() state_after = tostring(bot:state()) end)
 
@@ -256,7 +207,7 @@ local function runTutorial(bot, email)
                 tutorialDone = true
                 break
             end
-            sleep(2000)
+            sleep(1000)
         end
         if tutorialDone then
             log("  🎓 " .. email .. " → 🎉 SELESAI!")
@@ -388,11 +339,11 @@ local function loginSingle(i, acc)
         if retry < MAX_RETRIES then
             local delay = 0
             if jr_code == 5 then
-                delay = 5000 + (retry * 3000) -- jr=5: tunggu 5-11 detik
+                delay = 3000 + (retry * 2000) -- jr=5: tunggu 3-7 detik
             elseif jr_code == 11 then
-                delay = 10000 + (retry * 5000) -- jr=11: tunggu 10-20 detik
+                delay = 5000 + (retry * 3000) -- jr=11: tunggu 5-11 detik
             else
-                delay = 5000
+                delay = 3000
             end
             log("  ⚠️ " .. reject_reason .. " → retry " .. retry .. "/" .. MAX_RETRIES .. " (wait " .. math.floor(delay/1000) .. "s)")
             
@@ -419,11 +370,11 @@ local function loginSingle(i, acc)
     log("  ✅ Connected!")
 
     -- CEK TUTORIAL
-    sleep(500)
+    sleep(200)
     runTutorial(bot, email)
 
     -- CEK EMAIL VERIFICATION
-    sleep(500)
+    sleep(200)
     local verify_status = checkEmailVerification(bot, email)
     if verify_status == "verified" then
         log("  📧 " .. email .. " → ✅ VERIFIED")
@@ -437,14 +388,14 @@ local function loginSingle(i, acc)
     end
 
     -- Warp ke world random
-    sleep(500)
-    for attempt = 1, 5 do
+    sleep(300)
+    for attempt = 1, 3 do
         local wname = ""
         for _ = 1, math.random(4, 7) do
             wname = wname .. string.char(math.random(65, 90))
         end
         pcall(function() bot:warp(wname) end)
-        sleep(2000)
+        sleep(1500)
         local ws_ok, ws = pcall(function() return bot:state() end)
         if ws_ok and ws == "InWorld" then
             log("  🌍 Warp → " .. wname)
@@ -473,7 +424,21 @@ for batch_start = 1, #accounts, BATCH_SIZE do
         sleep(LOGIN_DELAY_MIN)
     end
 
-    sleep(CONNECT_TIMEOUT + TUTORIAL_TIMEOUT + 30000)
+    -- Tunggu semua thread selesai (dynamic, bukan fixed sleep)
+    local batch_timeout = CONNECT_TIMEOUT + TUTORIAL_TIMEOUT + 5000
+    local batch_start_time = now_ms()
+    local all_done = false
+    while now_ms() - batch_start_time < batch_timeout and not all_done do
+        all_done = true
+        for _, tid in ipairs(threads) do
+            local t_ok, t_running = pcall(isThreadRunning, tid)
+            if t_ok and t_running then
+                all_done = false
+                break
+            end
+        end
+        if not all_done then sleep(500) end
+    end
 
     for _, tid in ipairs(threads) do
         pcall(removeThread, tid)
