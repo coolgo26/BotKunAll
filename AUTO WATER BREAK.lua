@@ -1314,11 +1314,14 @@ while true do
                                 st.next_action = now
                             end
                         else
-                            -- Bot adjacent, use proper hit_water API
-                            -- Per docs: hit_water(dx, dy) hits water block at offset from bot
-                            local dx = t.x - px
-                            local dy = t.y - py
-                            pcall(b.hit_water, b, dx, dy)
+                            -- Bot adjacent, send raw hit water packet
+                            pcall(function()
+                                b:send("sQUw", {
+                                    x    = t.x,
+                                    y    = t.y,
+                                    NGVj = 0
+                                })
+                            end)
                             
                             st.hits_count  = st.hits_count + 1
                             local jitter   = math.random(CONFIG.HIT_JITTER_MIN, CONFIG.HIT_JITTER_MAX)
