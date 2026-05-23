@@ -647,130 +647,135 @@ local function distribute(actor, portal_name, bot_id)
     moveHorizontal(actor, 7)
     sleep_ms(300)
 
-    -- Step 2: Drop semua storage items
-    local inventory = safeCall(actor.get_inventory, actor) or {}
-    local released  = 0
-    local dropCount = 0
+    -- Step 2: Snapshot inventory SEBELUM drop (total amount per item)
+    local inv_snapshot = safeCall(actor.get_inventory, actor) or {}
+    local before_totals = {}  -- { [item_id] = total_amount }
+    for _, item in ipairs(inv_snapshot) do
+        if CONFIG.STORAGE_ITEMS[item.id] then
+            before_totals[item.id] = (before_totals[item.id] or 0) + (item.amount or 0)
+        end
+    end
+
+    local released       = 0
+    local dropCount      = 0
     local blocks_dropped = 0
     local seeds_dropped  = 0
+    local drop_failures  = 0
 
-    for _, item in ipairs(inventory) do
+    -- Step 3: Drop semua storage items - simple approach tanpa over-verification
+    for _, item in ipairs(inv_snapshot) do
         if not worldReady(actor) then break end
 
-        -- Drop jika item ID ada di STORAGE_ITEMS
         local should_drop = CONFIG.STORAGE_ITEMS[item.id]
 
-        if should_drop and item.amount > 0 then
+        if should_drop and item.amount and item.amount > 0 then
             local remain = item.amount
+
             while remain > 0 do
                 if not worldReady(actor) then break end
+                if drop_failures >= 5 then break end  -- max 5 failures total, lalu give up
 
-                -- Cek apakah tile saat ini penuh
-                if isTileFull(actor) then
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                end
+                local dropAmount = math.min(remain, 200)
 
-                local dropAmount = math.min(remain, 100)
-                
-                -- Get inventory SEBELUM drop
-                local inv_before = safeCall(actor.get_inventory, actor) or {}
-                local before_amount = 0
-                for _, it in ipairs(inv_before) do
-                    if it.id == item.id then before_amount = it.amount or 0 end
-                end
-                
-                -- Attempt drop
-                pcall(actor.drop, actor, item.id, dropAmount, item.inventory_type)
+                -- Per docs: bot:drop(item_id, amount, inventory_type?)
+                -- inventory_type optional, auto-detected from inventory
+                -- Jangan pass inventory_type agar auto-detect bekerja
+                local drop_ok = pcall(actor.drop, actor, item.id, dropAmount)
                 sleep_ms(CONFIG.RELEASE_DELAY)
 
-                -- Get inventory SETELAH drop
-                local inv_after = safeCall(actor.get_inventory, actor) or {}
-                local after_amount = 0
-                for _, it in ipairs(inv_after) do
-                    if it.id == item.id then after_amount = it.amount or 0 end
-                end
-                
-                -- Check if drop actually succeeded
-                local actual_dropped = before_amount - after_amount
-                if actual_dropped <= 0 then
-                    -- Drop gagal, mundur dan retry
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                    
-                    -- Retry drop once
-                    pcall(actor.drop, actor, item.id, dropAmount, item.inventory_type)
-                    sleep_ms(CONFIG.RELEASE_DELAY)
-                    
-                    -- Check again after retry
-                    inv_after = safeCall(actor.get_inventory, actor) or {}
-                    after_amount = 0
-                    for _, it in ipairs(inv_after) do
-                        if it.id == item.id then after_amount = it.amount or 0 end
-                    end
-                    actual_dropped = before_amount - after_amount
-                end
+                if drop_ok then
+                    -- Assume drop berhasil (server accepted command)
+                    released       = released + dropAmount
+                    dropCount      = dropCount + 1
+                    remain         = remain - dropAmount
 
-                -- Only count what actually dropped
-                if actual_dropped > 0 then
-                    released = released + actual_dropped
-                    dropCount = dropCount + 1
-                    remain = remain - actual_dropped
-                    
                     -- Track block vs seed
-                    local is_seed = false
-                    if item.inventory_type == 2 then
-                        is_seed = true
-                    elseif CONFIG.SEED_IDS[item.id] then
-                        is_seed = true
-                    end
-
-                    if is_seed then
-                        seeds_dropped = seeds_dropped + actual_dropped
+                    if CONFIG.SEED_IDS[item.id] then
+                        seeds_dropped = seeds_dropped + dropAmount
                     else
-                        blocks_dropped = blocks_dropped + actual_dropped
+                        blocks_dropped = blocks_dropped + dropAmount
                     end
                 else
-                    -- Drop failed repeatedly, skip remaining of this item
-                    warn(id, "Drop failed for item " .. item.id .. ", skipping")
-                    break
-                end
+                    -- pcall failed = function threw error (item not found, etc)
+                    drop_failures = drop_failures + 1
+                    debug(id, "Drop pcall failed for item " .. item.id .. " (attempt " .. drop_failures .. ")")
 
+                    -- Mungkin tile penuh, coba mundur
+                    moveHorizontal(actor, -1)
+                    sleep_ms(200)
+
+                    -- Retry sekali
+                    local retry_ok = pcall(actor.drop, actor, item.id, dropAmount)
+                    sleep_ms(CONFIG.RELEASE_DELAY)
+
+                    if retry_ok then
+                        released       = released + dropAmount
+                        dropCount      = dropCount + 1
+                        remain         = remain - dropAmount
+
+                        if CONFIG.SEED_IDS[item.id] then
+                            seeds_dropped = seeds_dropped + dropAmount
+                        else
+                            blocks_dropped = blocks_dropped + dropAmount
+                        end
+                    else
+                        -- Retry juga gagal, skip item ini
+                        warn(id, "Drop failed for item " .. item.id .. ", skipping")
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    -- Step 4: Verifikasi — cek inventory SETELAH semua drop selesai
+    if released == 0 and drop_failures == 0 then
+        -- Tidak ada yang di-drop sama sekali, coba fallback: drop SEMUA items
+        warn(id, "No storage items dropped, trying fallback drop all")
+        local inv_now = safeCall(actor.get_inventory, actor) or {}
+        for _, item in ipairs(inv_now) do
+            if not worldReady(actor) then break end
+            if item.amount and item.amount > 0 then
+                local drop_ok = pcall(actor.drop, actor, item.id, item.amount)
+                if drop_ok then
+                    released  = released + item.amount
+                    dropCount = dropCount + 1
+
+                    if CONFIG.SEED_IDS[item.id] then
+                        seeds_dropped = seeds_dropped + item.amount
+                    else
+                        blocks_dropped = blocks_dropped + item.amount
+                    end
+                end
                 sleep_ms(CONFIG.RELEASE_DELAY)
             end
         end
     end
 
-    -- Fallback: jika tidak ada storage items tapi inventory penuh, drop semua
-    if released == 0 then
-        inventory = safeCall(actor.get_inventory, actor) or {}
-        for _, item in ipairs(inventory) do
-            if not worldReady(actor) then break end
-            if item.amount and item.amount > 0 then
-                if isTileFull(actor) then
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                end
-                pcall(actor.drop, actor, item.id, item.amount, item.inventory_type)
-                released  = released + item.amount
-                dropCount = dropCount + 1
-
-                local is_seed = false
-                if item.inventory_type == 2 then
-                    is_seed = true
-                elseif CONFIG.SEED_IDS[item.id] then
-                    is_seed = true
-                end
-
-                if is_seed then
-                    seeds_dropped = seeds_dropped + item.amount
-                else
-                    blocks_dropped = blocks_dropped + item.amount
-                end
-
-                sleep_ms(CONFIG.RELEASE_DELAY)
-            end
+    -- Step 5: Final verification — hitung actual drop dari perbedaan inventory
+    local inv_after = safeCall(actor.get_inventory, actor) or {}
+    local after_totals = {}
+    for _, item in ipairs(inv_after) do
+        if CONFIG.STORAGE_ITEMS[item.id] then
+            after_totals[item.id] = (after_totals[item.id] or 0) + (item.amount or 0)
         end
+    end
+
+    -- Hitung actual released berdasarkan perbedaan before/after
+    local actual_released = 0
+    for item_id, before_amt in pairs(before_totals) do
+        local after_amt = after_totals[item_id] or 0
+        local diff = before_amt - after_amt
+        if diff > 0 then
+            actual_released = actual_released + diff
+        end
+    end
+
+    -- Gunakan actual_released jika lebih rendah dari assumed released
+    -- (menandakan beberapa drop silent-failed)
+    if actual_released < released then
+        debug(id, "Actual released (" .. actual_released .. ") < assumed (" .. released .. ")")
+        released = actual_released
     end
 
     -- Update per-portal stats
