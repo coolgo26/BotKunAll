@@ -138,7 +138,7 @@ local function webhookEmbed(embed_data)
     end
 
     local payload = {
-        username   = "ðŸ’§ Water Farm Bot",
+        username   = "💧 Water Farm Bot",
         avatar_url = "https://i.imgur.com/6YToyEF.png",
         embeds     = { embed_data }
     }
@@ -245,15 +245,15 @@ local function sendReport()
     end
 
     local PHASE_EMOJI = {
-        farming = "â›ï¸", entering = "ðŸšª", syncing = "ðŸ”„",
-        scanning = "ðŸ”", storage_leave = "ðŸ“¤", storage_enter = "ðŸ“¥",
-        storage_return = "â†©ï¸", leaving = "ðŸš¶", refresh = "â™»ï¸",
-        idle = "ðŸ’¤", recover = "ðŸ”§",
+        farming = "⛏️", entering = "🚪", syncing = "🔄",
+        scanning = "🔍", storage_leave = "📤", storage_enter = "📥",
+        storage_return = "↩️", leaving = "🚶", refresh = "♻️",
+        idle = "💤", recover = "🔧",
     }
 
     local phase_lines = {}
     for ph, count in pairs(phase_count) do
-        local emoji = PHASE_EMOJI[ph] or "â–ªï¸"
+        local emoji = PHASE_EMOJI[ph] or "▪️"
         table.insert(phase_lines, string.format("%s %s: **%d**", emoji, ph, count))
     end
 
@@ -315,7 +315,7 @@ local function sendReport()
         if ps and (ps.blocks > 0 or ps.seeds > 0) then
             -- Blur nama portal: hanya tampilkan "Portal #1", "Portal #2", dst
             table.insert(portal_lines, string.format(
-                "`Portal #%d` ðŸ§± %d | ðŸŒ± %d",
+                "`Portal #%d` 🧱 %d | 🌱 %d",
                 idx, ps.blocks, ps.seeds
             ))
         end
@@ -327,7 +327,7 @@ local function sendReport()
         local max_warns = math.min(#pending_warns, 5)
         local warn_lines = {}
         for i = 1, max_warns do
-            table.insert(warn_lines, "â€¢ " .. pending_warns[i])
+            table.insert(warn_lines, "• " .. pending_warns[i])
         end
         warn_text = table.concat(warn_lines, "\n")
         pending_warns = {}
@@ -351,18 +351,18 @@ local function sendReport()
     -- Build embed
     local fields = {
         {
-            name = "ðŸ“Š Statistics",
+            name = "📊 Statistics",
             value = table.concat({
-                "ðŸŒŠ Found: **" .. grand_found .. "**",
-                "ðŸ”¨ Broken: **" .. grand_broken .. "**",
-                "ðŸ“¦ Dropped: **" .. totalReleased .. "**",
-                "ðŸ”„ Cycles: **" .. total_cycles .. "**",
-                "âš¡ Speed: **" .. bpm_total .. "**/min",
+                "🌊 Found: **" .. grand_found .. "**",
+                "🔨 Broken: **" .. grand_broken .. "**",
+                "📦 Dropped: **" .. totalReleased .. "**",
+                "🔄 Cycles: **" .. total_cycles .. "**",
+                "⚡ Speed: **" .. bpm_total .. "**/min",
             }, "\n"),
             inline = true,
         },
         {
-            name = "ðŸ¤– Bots (" .. #bot_ids .. ")",
+            name = "🤖 Bots (" .. #bot_ids .. ")",
             value = table.concat(phase_lines, "\n"),
             inline = true,
         },
@@ -371,7 +371,7 @@ local function sendReport()
     -- Portal field (jika ada data)
     if #portal_lines > 0 then
         table.insert(fields, {
-            name = "ðŸ“¦ Storage Portals",
+            name = "📦 Storage Portals",
             value = table.concat(portal_lines, "\n"),
             inline = false,
         })
@@ -380,7 +380,7 @@ local function sendReport()
     -- Top bots field
     if #top_lines > 0 then
         table.insert(fields, {
-            name = "ðŸ† Top Bots (per minute)",
+            name = "🏆 Top Bots (per minute)",
             value = table.concat(top_lines, "\n"),
             inline = false,
         })
@@ -389,19 +389,19 @@ local function sendReport()
     -- Warnings field
     if warn_text ~= "" then
         table.insert(fields, {
-            name = "âš ï¸ Warnings",
+            name = "⚠️ Warnings",
             value = warn_text,
             inline = false,
         })
     end
 
     local embed = {
-        title       = "ðŸ’§ Auto Water Farm",
-        description = "â±ï¸ Uptime: **" .. uptime_str .. "** | ðŸ¤– **" .. #bot_ids .. "** bots active",
+        title       = "💧 Auto Water Farm",
+        description = "⏱️ Uptime: **" .. uptime_str .. "** | 🤖 **" .. #bot_ids .. "** bots active",
         color       = embed_color,
         fields      = fields,
         footer      = {
-            text = "Water Farm v2.0 â€¢ " .. os.date("%Y-%m-%d %H:%M:%S"),
+            text = "Water Farm v2.0 • " .. os.date("%Y-%m-%d %H:%M:%S"),
         },
         thumbnail   = {
             url = "https://i.imgur.com/6YToyEF.png",
@@ -931,15 +931,15 @@ init()
 
 log("AUTO WATER FARM + STORAGE v2.0")
 webhookEmbed({
-    title       = "ðŸš€ Script Started",
+    title       = "🚀 Script Started",
     description = "Auto Water Farm aktif dengan **" .. #getBots() .. "** bot",
     color       = 3066993,
     fields      = {
-        { name = "ðŸ¤– Bots", value = tostring(#getBots()), inline = true },
-        { name = "ðŸ“¦ Portals", value = tostring(#CONFIG.PORTALS), inline = true },
-        { name = "ðŸŽ¯ Target ID", value = tostring(CONFIG.TARGET_ID), inline = true },
+        { name = "🤖 Bots", value = tostring(#getBots()), inline = true },
+        { name = "📦 Portals", value = tostring(#CONFIG.PORTALS), inline = true },
+        { name = "🎯 Target ID", value = tostring(CONFIG.TARGET_ID), inline = true },
     },
-    footer      = { text = "Water Farm v2.0 â€¢ Started" },
+    footer      = { text = "Water Farm v2.0 • Started" },
     thumbnail   = { url = "https://i.imgur.com/6YToyEF.png" },
 })
 
@@ -1393,7 +1393,7 @@ while true do
             -- Verifikasi inventory sudah turun
             local after_count = getItemCount(b, CONFIG.STORAGE_ITEMS)
             if after_count >= CONFIG.STORAGE_THRESHOLD then
-                -- Masih penuh setelah drop â€” naikkan threshold sementara agar tidak loop
+                -- Masih penuh setelah drop — naikkan threshold sementara agar tidak loop
                 warn(id, "Inventory masih penuh setelah drop (" .. after_count .. "), lanjut farming")
             end
 
