@@ -427,14 +427,13 @@ end
 --------------------------------------------------
 
 local function isValidWorld(w)
-    -- w.tiles = field standar; w.water = alias lama (fallback)
-    local tile_data = w and (w.tiles or w.water)
+    -- Per docs: world table has w.fg, w.bg, w.water, w.wiring as separate arrays
     return w
         and type(w) == "table"
         and w.width
         and w.height
-        and tile_data
-        and #tile_data > 0
+        and w.fg
+        and #w.fg > 0
 end
 
 local function worldReady(actor)
@@ -582,7 +581,7 @@ end
 local function getItemCount(b, itemIds)
     local inv = safeCall(b.get_inventory, b) or {}
     local total = 0
-    for _, item in pairs(inv) do
+    for _, item in ipairs(inv) do
         if itemIds[item.id] then
             total = total + (item.amount or 0)
         end
@@ -612,12 +611,13 @@ local function isTileFull(actor)
     local pos = safeCall(actor.pos, actor)
     if not pos then return false end
 
-    -- Per docs: Collectable punya fields x, y (bukan pixel coords jelas dari kontext)
-    -- Countables di tile saat ini
+    -- Per docs: Collectable x/y are sub-pixel coordinates
+    -- Use math.floor(c.x / 32) to convert to tile coords (as shown in docs example)
     local count = 0
     for _, c in ipairs(collectables) do
-        -- c.x dan c.y sudah tile coordinates per docs
-        if c.x == pos.tile_x and c.y == pos.tile_y then
+        local cx = math.floor(c.x / 32)
+        local cy = math.floor(c.y / 32)
+        if cx == pos.tile_x and cy == pos.tile_y then
             count = count + 1
         end
     end
@@ -1155,12 +1155,16 @@ while true do
             if isValidWorld(w) then
                 st.targets = {}
                 local count = 0
-                local tile_data = w.tiles or w.water  -- support keduanya
-                for y = 0, w.height - 1 do
-                    for x = 0, w.width - 1 do
-                        if tile_data[y * w.width + x + 1] == CONFIG.TARGET_ID then
-                            table.insert(st.targets, { x = x, y = y })
-                            count = count + 1
+                -- Per docs: w.water is the flat array for water layer blocks
+                -- Index formula: y * w.width + x + 1
+                local water_data = w.water
+                if water_data and #water_data > 0 then
+                    for y = 0, w.height - 1 do
+                        for x = 0, w.width - 1 do
+                            if water_data[y * w.width + x + 1] == CONFIG.TARGET_ID then
+                                table.insert(st.targets, { x = x, y = y })
+                                count = count + 1
+                            end
                         end
                     end
                 end
@@ -1310,14 +1314,11 @@ while true do
                                 st.next_action = now
                             end
                         else
-                            -- Bot adjacent, send hit packet
-                            pcall(function()
-                                b:send("sQUw", {
-                                    x    = t.x,
-                                    y    = t.y,
-                                    NGVj = 0
-                                })
-                            end)
+                            -- Bot adjacent, use proper hit_water API
+                            -- Per docs: hit_water(dx, dy) hits water block at offset from bot
+                            local dx = t.x - px
+                            local dy = t.y - py
+                            pcall(b.hit_water, b, dx, dy)
                             
                             st.hits_count  = st.hits_count + 1
                             local jitter   = math.random(CONFIG.HIT_JITTER_MIN, CONFIG.HIT_JITTER_MAX)
