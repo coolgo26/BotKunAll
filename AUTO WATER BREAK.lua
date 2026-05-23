@@ -138,7 +138,7 @@ local function webhookEmbed(embed_data)
     end
 
     local payload = {
-        username   = "ðŸ’§ Water Farm Bot",
+        username   = "💧 Water Farm Bot",
         avatar_url = "https://i.imgur.com/6YToyEF.png",
         embeds     = { embed_data }
     }
@@ -245,15 +245,15 @@ local function sendReport()
     end
 
     local PHASE_EMOJI = {
-        farming = "â›ï¸", entering = "ðŸšª", syncing = "ðŸ”„",
-        scanning = "ðŸ”", storage_leave = "ðŸ“¤", storage_enter = "ðŸ“¥",
-        storage_return = "â†©ï¸", leaving = "ðŸš¶", refresh = "â™»ï¸",
-        idle = "ðŸ’¤", recover = "ðŸ”§",
+        farming = "⛏️", entering = "🚪", syncing = "🔄",
+        scanning = "🔍", storage_leave = "📤", storage_enter = "📥",
+        storage_return = "↩️", leaving = "🚶", refresh = "♻️",
+        idle = "💤", recover = "🔧",
     }
 
     local phase_lines = {}
     for ph, count in pairs(phase_count) do
-        local emoji = PHASE_EMOJI[ph] or "â–ªï¸"
+        local emoji = PHASE_EMOJI[ph] or "▪️"
         table.insert(phase_lines, string.format("%s %s: **%d**", emoji, ph, count))
     end
 
@@ -315,7 +315,7 @@ local function sendReport()
         if ps and (ps.blocks > 0 or ps.seeds > 0) then
             -- Blur nama portal: hanya tampilkan "Portal #1", "Portal #2", dst
             table.insert(portal_lines, string.format(
-                "`Portal #%d` ðŸ§± %d | ðŸŒ± %d",
+                "`Portal #%d` 🧱 %d | 🌱 %d",
                 idx, ps.blocks, ps.seeds
             ))
         end
@@ -327,7 +327,7 @@ local function sendReport()
         local max_warns = math.min(#pending_warns, 5)
         local warn_lines = {}
         for i = 1, max_warns do
-            table.insert(warn_lines, "â€¢ " .. pending_warns[i])
+            table.insert(warn_lines, "• " .. pending_warns[i])
         end
         warn_text = table.concat(warn_lines, "\n")
         pending_warns = {}
@@ -351,18 +351,18 @@ local function sendReport()
     -- Build embed
     local fields = {
         {
-            name = "ðŸ“Š Statistics",
+            name = "📊 Statistics",
             value = table.concat({
-                "ðŸŒŠ Found: **" .. grand_found .. "**",
-                "ðŸ”¨ Broken: **" .. grand_broken .. "**",
-                "ðŸ“¦ Dropped: **" .. totalReleased .. "**",
-                "ðŸ”„ Cycles: **" .. total_cycles .. "**",
-                "âš¡ Speed: **" .. bpm_total .. "**/min",
+                "🌊 Found: **" .. grand_found .. "**",
+                "🔨 Broken: **" .. grand_broken .. "**",
+                "📦 Dropped: **" .. totalReleased .. "**",
+                "🔄 Cycles: **" .. total_cycles .. "**",
+                "⚡ Speed: **" .. bpm_total .. "**/min",
             }, "\n"),
             inline = true,
         },
         {
-            name = "ðŸ¤– Bots (" .. #bot_ids .. ")",
+            name = "🤖 Bots (" .. #bot_ids .. ")",
             value = table.concat(phase_lines, "\n"),
             inline = true,
         },
@@ -371,7 +371,7 @@ local function sendReport()
     -- Portal field (jika ada data)
     if #portal_lines > 0 then
         table.insert(fields, {
-            name = "ðŸ“¦ Storage Portals",
+            name = "📦 Storage Portals",
             value = table.concat(portal_lines, "\n"),
             inline = false,
         })
@@ -380,7 +380,7 @@ local function sendReport()
     -- Top bots field
     if #top_lines > 0 then
         table.insert(fields, {
-            name = "ðŸ† Top Bots (per minute)",
+            name = "🏆 Top Bots (per minute)",
             value = table.concat(top_lines, "\n"),
             inline = false,
         })
@@ -389,19 +389,19 @@ local function sendReport()
     -- Warnings field
     if warn_text ~= "" then
         table.insert(fields, {
-            name = "âš ï¸ Warnings",
+            name = "⚠️ Warnings",
             value = warn_text,
             inline = false,
         })
     end
 
     local embed = {
-        title       = "ðŸ’§ Auto Water Farm",
-        description = "â±ï¸ Uptime: **" .. uptime_str .. "** | ðŸ¤– **" .. #bot_ids .. "** bots active",
+        title       = "💧 Auto Water Farm",
+        description = "⏱️ Uptime: **" .. uptime_str .. "** | 🤖 **" .. #bot_ids .. "** bots active",
         color       = embed_color,
         fields      = fields,
         footer      = {
-            text = "Water Farm v2.0 â€¢ " .. os.date("%Y-%m-%d %H:%M:%S"),
+            text = "Water Farm v2.0 • " .. os.date("%Y-%m-%d %H:%M:%S"),
         },
         thumbnail   = {
             url = "https://i.imgur.com/6YToyEF.png",
@@ -427,14 +427,13 @@ end
 --------------------------------------------------
 
 local function isValidWorld(w)
-    -- w.tiles = field standar; w.water = alias lama (fallback)
-    local tile_data = w and (w.tiles or w.water)
+    -- Per docs: world table has w.fg, w.bg, w.water, w.wiring as separate arrays
     return w
         and type(w) == "table"
         and w.width
         and w.height
-        and tile_data
-        and #tile_data > 0
+        and w.fg
+        and #w.fg > 0
 end
 
 local function worldReady(actor)
@@ -582,7 +581,7 @@ end
 local function getItemCount(b, itemIds)
     local inv = safeCall(b.get_inventory, b) or {}
     local total = 0
-    for _, item in pairs(inv) do
+    for _, item in ipairs(inv) do
         if itemIds[item.id] then
             total = total + (item.amount or 0)
         end
@@ -612,12 +611,13 @@ local function isTileFull(actor)
     local pos = safeCall(actor.pos, actor)
     if not pos then return false end
 
-    -- Per docs: Collectable punya fields x, y (bukan pixel coords jelas dari kontext)
-    -- Countables di tile saat ini
+    -- Per docs: Collectable x/y are sub-pixel coordinates
+    -- Use math.floor(c.x / 32) to convert to tile coords (as shown in docs example)
     local count = 0
     for _, c in ipairs(collectables) do
-        -- c.x dan c.y sudah tile coordinates per docs
-        if c.x == pos.tile_x and c.y == pos.tile_y then
+        local cx = math.floor(c.x / 32)
+        local cy = math.floor(c.y / 32)
+        if cx == pos.tile_x and cy == pos.tile_y then
             count = count + 1
         end
     end
@@ -647,130 +647,135 @@ local function distribute(actor, portal_name, bot_id)
     moveHorizontal(actor, 7)
     sleep_ms(300)
 
-    -- Step 2: Drop semua storage items
-    local inventory = safeCall(actor.get_inventory, actor) or {}
-    local released  = 0
-    local dropCount = 0
+    -- Step 2: Snapshot inventory SEBELUM drop (total amount per item)
+    local inv_snapshot = safeCall(actor.get_inventory, actor) or {}
+    local before_totals = {}  -- { [item_id] = total_amount }
+    for _, item in ipairs(inv_snapshot) do
+        if CONFIG.STORAGE_ITEMS[item.id] then
+            before_totals[item.id] = (before_totals[item.id] or 0) + (item.amount or 0)
+        end
+    end
+
+    local released       = 0
+    local dropCount      = 0
     local blocks_dropped = 0
     local seeds_dropped  = 0
+    local drop_failures  = 0
 
-    for _, item in ipairs(inventory) do
+    -- Step 3: Drop semua storage items - simple approach tanpa over-verification
+    for _, item in ipairs(inv_snapshot) do
         if not worldReady(actor) then break end
 
-        -- Drop jika item ID ada di STORAGE_ITEMS
         local should_drop = CONFIG.STORAGE_ITEMS[item.id]
 
-        if should_drop and item.amount > 0 then
+        if should_drop and item.amount and item.amount > 0 then
             local remain = item.amount
+
             while remain > 0 do
                 if not worldReady(actor) then break end
+                if drop_failures >= 5 then break end  -- max 5 failures total, lalu give up
 
-                -- Cek apakah tile saat ini penuh
-                if isTileFull(actor) then
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                end
+                local dropAmount = math.min(remain, 200)
 
-                local dropAmount = math.min(remain, 100)
-                
-                -- Get inventory SEBELUM drop
-                local inv_before = safeCall(actor.get_inventory, actor) or {}
-                local before_amount = 0
-                for _, it in ipairs(inv_before) do
-                    if it.id == item.id then before_amount = it.amount or 0 end
-                end
-                
-                -- Attempt drop
-                pcall(actor.drop, actor, item.id, dropAmount, item.inventory_type)
+                -- Per docs: bot:drop(item_id, amount, inventory_type?)
+                -- inventory_type optional, auto-detected from inventory
+                -- Jangan pass inventory_type agar auto-detect bekerja
+                local drop_ok = pcall(actor.drop, actor, item.id, dropAmount)
                 sleep_ms(CONFIG.RELEASE_DELAY)
 
-                -- Get inventory SETELAH drop
-                local inv_after = safeCall(actor.get_inventory, actor) or {}
-                local after_amount = 0
-                for _, it in ipairs(inv_after) do
-                    if it.id == item.id then after_amount = it.amount or 0 end
-                end
-                
-                -- Check if drop actually succeeded
-                local actual_dropped = before_amount - after_amount
-                if actual_dropped <= 0 then
-                    -- Drop gagal, mundur dan retry
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                    
-                    -- Retry drop once
-                    pcall(actor.drop, actor, item.id, dropAmount, item.inventory_type)
-                    sleep_ms(CONFIG.RELEASE_DELAY)
-                    
-                    -- Check again after retry
-                    inv_after = safeCall(actor.get_inventory, actor) or {}
-                    after_amount = 0
-                    for _, it in ipairs(inv_after) do
-                        if it.id == item.id then after_amount = it.amount or 0 end
-                    end
-                    actual_dropped = before_amount - after_amount
-                end
+                if drop_ok then
+                    -- Assume drop berhasil (server accepted command)
+                    released       = released + dropAmount
+                    dropCount      = dropCount + 1
+                    remain         = remain - dropAmount
 
-                -- Only count what actually dropped
-                if actual_dropped > 0 then
-                    released = released + actual_dropped
-                    dropCount = dropCount + 1
-                    remain = remain - actual_dropped
-                    
                     -- Track block vs seed
-                    local is_seed = false
-                    if item.inventory_type == 2 then
-                        is_seed = true
-                    elseif CONFIG.SEED_IDS[item.id] then
-                        is_seed = true
-                    end
-
-                    if is_seed then
-                        seeds_dropped = seeds_dropped + actual_dropped
+                    if CONFIG.SEED_IDS[item.id] then
+                        seeds_dropped = seeds_dropped + dropAmount
                     else
-                        blocks_dropped = blocks_dropped + actual_dropped
+                        blocks_dropped = blocks_dropped + dropAmount
                     end
                 else
-                    -- Drop failed repeatedly, skip remaining of this item
-                    warn(id, "Drop failed for item " .. item.id .. ", skipping")
-                    break
-                end
+                    -- pcall failed = function threw error (item not found, etc)
+                    drop_failures = drop_failures + 1
+                    debug(id, "Drop pcall failed for item " .. item.id .. " (attempt " .. drop_failures .. ")")
 
+                    -- Mungkin tile penuh, coba mundur
+                    moveHorizontal(actor, -1)
+                    sleep_ms(200)
+
+                    -- Retry sekali
+                    local retry_ok = pcall(actor.drop, actor, item.id, dropAmount)
+                    sleep_ms(CONFIG.RELEASE_DELAY)
+
+                    if retry_ok then
+                        released       = released + dropAmount
+                        dropCount      = dropCount + 1
+                        remain         = remain - dropAmount
+
+                        if CONFIG.SEED_IDS[item.id] then
+                            seeds_dropped = seeds_dropped + dropAmount
+                        else
+                            blocks_dropped = blocks_dropped + dropAmount
+                        end
+                    else
+                        -- Retry juga gagal, skip item ini
+                        warn(id, "Drop failed for item " .. item.id .. ", skipping")
+                        break
+                    end
+                end
+            end
+        end
+    end
+
+    -- Step 4: Verifikasi — cek inventory SETELAH semua drop selesai
+    if released == 0 and drop_failures == 0 then
+        -- Tidak ada yang di-drop sama sekali, coba fallback: drop SEMUA items
+        warn(id, "No storage items dropped, trying fallback drop all")
+        local inv_now = safeCall(actor.get_inventory, actor) or {}
+        for _, item in ipairs(inv_now) do
+            if not worldReady(actor) then break end
+            if item.amount and item.amount > 0 then
+                local drop_ok = pcall(actor.drop, actor, item.id, item.amount)
+                if drop_ok then
+                    released  = released + item.amount
+                    dropCount = dropCount + 1
+
+                    if CONFIG.SEED_IDS[item.id] then
+                        seeds_dropped = seeds_dropped + item.amount
+                    else
+                        blocks_dropped = blocks_dropped + item.amount
+                    end
+                end
                 sleep_ms(CONFIG.RELEASE_DELAY)
             end
         end
     end
 
-    -- Fallback: jika tidak ada storage items tapi inventory penuh, drop semua
-    if released == 0 then
-        inventory = safeCall(actor.get_inventory, actor) or {}
-        for _, item in ipairs(inventory) do
-            if not worldReady(actor) then break end
-            if item.amount and item.amount > 0 then
-                if isTileFull(actor) then
-                    moveHorizontal(actor, -1)
-                    sleep_ms(200)
-                end
-                pcall(actor.drop, actor, item.id, item.amount, item.inventory_type)
-                released  = released + item.amount
-                dropCount = dropCount + 1
-
-                local is_seed = false
-                if item.inventory_type == 2 then
-                    is_seed = true
-                elseif CONFIG.SEED_IDS[item.id] then
-                    is_seed = true
-                end
-
-                if is_seed then
-                    seeds_dropped = seeds_dropped + item.amount
-                else
-                    blocks_dropped = blocks_dropped + item.amount
-                end
-
-                sleep_ms(CONFIG.RELEASE_DELAY)
-            end
+    -- Step 5: Final verification — hitung actual drop dari perbedaan inventory
+    local inv_after = safeCall(actor.get_inventory, actor) or {}
+    local after_totals = {}
+    for _, item in ipairs(inv_after) do
+        if CONFIG.STORAGE_ITEMS[item.id] then
+            after_totals[item.id] = (after_totals[item.id] or 0) + (item.amount or 0)
         end
+    end
+
+    -- Hitung actual released berdasarkan perbedaan before/after
+    local actual_released = 0
+    for item_id, before_amt in pairs(before_totals) do
+        local after_amt = after_totals[item_id] or 0
+        local diff = before_amt - after_amt
+        if diff > 0 then
+            actual_released = actual_released + diff
+        end
+    end
+
+    -- Gunakan actual_released jika lebih rendah dari assumed released
+    -- (menandakan beberapa drop silent-failed)
+    if actual_released < released then
+        debug(id, "Actual released (" .. actual_released .. ") < assumed (" .. released .. ")")
+        released = actual_released
     end
 
     -- Update per-portal stats
@@ -926,15 +931,15 @@ init()
 
 log("AUTO WATER FARM + STORAGE v2.0")
 webhookEmbed({
-    title       = "ðŸš€ Script Started",
+    title       = "🚀 Script Started",
     description = "Auto Water Farm aktif dengan **" .. #getBots() .. "** bot",
     color       = 3066993,
     fields      = {
-        { name = "ðŸ¤– Bots", value = tostring(#getBots()), inline = true },
-        { name = "ðŸ“¦ Portals", value = tostring(#CONFIG.PORTALS), inline = true },
-        { name = "ðŸŽ¯ Target ID", value = tostring(CONFIG.TARGET_ID), inline = true },
+        { name = "🤖 Bots", value = tostring(#getBots()), inline = true },
+        { name = "📦 Portals", value = tostring(#CONFIG.PORTALS), inline = true },
+        { name = "🎯 Target ID", value = tostring(CONFIG.TARGET_ID), inline = true },
     },
-    footer      = { text = "Water Farm v2.0 â€¢ Started" },
+    footer      = { text = "Water Farm v2.0 • Started" },
     thumbnail   = { url = "https://i.imgur.com/6YToyEF.png" },
 })
 
@@ -1155,12 +1160,16 @@ while true do
             if isValidWorld(w) then
                 st.targets = {}
                 local count = 0
-                local tile_data = w.tiles or w.water  -- support keduanya
-                for y = 0, w.height - 1 do
-                    for x = 0, w.width - 1 do
-                        if tile_data[y * w.width + x + 1] == CONFIG.TARGET_ID then
-                            table.insert(st.targets, { x = x, y = y })
-                            count = count + 1
+                -- Per docs: w.water is the flat array for water layer blocks
+                -- Index formula: y * w.width + x + 1
+                local water_data = w.water
+                if water_data and #water_data > 0 then
+                    for y = 0, w.height - 1 do
+                        for x = 0, w.width - 1 do
+                            if water_data[y * w.width + x + 1] == CONFIG.TARGET_ID then
+                                table.insert(st.targets, { x = x, y = y })
+                                count = count + 1
+                            end
                         end
                     end
                 end
@@ -1310,7 +1319,7 @@ while true do
                                 st.next_action = now
                             end
                         else
-                            -- Bot adjacent, send hit packet
+                            -- Bot adjacent, send raw hit water packet
                             pcall(function()
                                 b:send("sQUw", {
                                     x    = t.x,
@@ -1384,7 +1393,7 @@ while true do
             -- Verifikasi inventory sudah turun
             local after_count = getItemCount(b, CONFIG.STORAGE_ITEMS)
             if after_count >= CONFIG.STORAGE_THRESHOLD then
-                -- Masih penuh setelah drop â€” naikkan threshold sementara agar tidak loop
+                -- Masih penuh setelah drop — naikkan threshold sementara agar tidak loop
                 warn(id, "Inventory masih penuh setelah drop (" .. after_count .. "), lanjut farming")
             end
 
